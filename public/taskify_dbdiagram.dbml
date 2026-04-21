@@ -1,0 +1,72 @@
+Table users {
+  id         text      [pk]
+  name       text      [not null]
+  email      text      [not null, unique]
+  password   text      [not null]
+  avatar     text
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+}
+
+Table boards {
+  id          text      [pk]
+  title       text      [not null]
+  description text
+  color       text      [not null, default: '#6366f1']
+  user_id     text      [not null, ref: > users.id]
+  created_at  timestamp [not null, default: `now()`]
+  updated_at  timestamp [not null, default: `now()`]
+}
+
+Table columns {
+  id         text      [pk]
+  title      text      [not null]
+  order      int       [not null, default: 0]
+  color      text      [not null, default: '#94a3b8']
+  board_id   text      [not null, ref: > boards.id]
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+}
+
+Table tasks {
+  id          text      [pk]
+  title       text      [not null]
+  description text
+  priority    priority  [not null, default: 'MEDIUM']
+  order       int       [not null, default: 0]
+  due_date    timestamp
+  column_id   text      [not null, ref: > columns.id]
+  created_at  timestamp [not null, default: `now()`]
+  updated_at  timestamp [not null, default: `now()`]
+}
+
+Table labels {
+  id    text [pk]
+  name  text [not null]
+  color text [not null]
+}
+
+Table task_labels {
+  task_id  text [not null, ref: > tasks.id]
+  label_id text [not null, ref: > labels.id]
+
+  indexes {
+    (task_id, label_id) [pk]
+  }
+}
+
+Table task_assignees {
+  task_id text [not null, ref: > tasks.id]
+  user_id text [not null, ref: > users.id]
+
+  indexes {
+    (task_id, user_id) [pk]
+  }
+}
+
+Enum priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
