@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,10 @@ import {
   Check,
   PenLine,
   Loader2,
-  Smile, // Icon tambahan untuk mood
+  Smile,
+  Folder,
+  Hash,
+  ChevronDown,
 } from "lucide-react";
 
 export default function Home() {
@@ -22,6 +25,12 @@ export default function Home() {
   const [journals, setJournals] = useState<any[]>([]);
   const [status, setStatus] = useState("Ready");
   const [journalId, setJournalId] = useState<string | null>(null);
+
+  // --- STATE CATEGORY ---
+  const [category, setCategory] = useState("Personal");
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const categories = ["Personal", "Work", "Ideas", "Urgent"];
+
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -35,10 +44,27 @@ export default function Home() {
   const router = useRouter();
   const isSaving = useRef(false);
 
+  // --- ORGANIZATION LOGIC ---
+  const groupedJournals = useMemo(() => {
+    const groups: { [key: string]: any[] } = {};
+    journals.forEach((j) => {
+      const cat = j.category || "Personal";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(j);
+    });
+    return groups;
+  }, [journals]);
+
   const fetchJournals = async () => {
     try {
-      const res = await fetch("/api/journal");
+      const res = await fetch("/api/journal", {
+        headers: { "Cache-Control": "no-cache" }, // Mencegah cache agresif Next.js 16
+      });
       const data = await res.json();
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
       setJournals(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Gagal mengambil data:", err);
@@ -51,14 +77,13 @@ export default function Home() {
       if (!data.user) {
         router.push("/login");
       } else {
-        fetchJournals();
+        await fetchJournals();
       }
       setCheckingAuth(false);
     };
     checkUser();
   }, [router]);
 
-  // --- FUNGSI DETEKSI MOOD ---
   const detectMood = async (content: string) => {
     if (content.length < 15) return;
     setIsAnalyzingMood(true);
@@ -70,14 +95,15 @@ export default function Home() {
       const data = await res.json();
       if (data.mood) setMood(data.mood);
     } catch (err) {
-      console.error("Mood Error:", err);
+      setMood("Netral");
     } finally {
       setIsAnalyzingMood(false);
     }
   };
 
-  // --- AUTO SAVE EFFECT ---
+  // --- AUTO SAVE EFFECT (IMPROVED) ---
   useEffect(() => {
+    // Jangan simpan jika text kosong atau sedang proses simpan
     if (!text.trim() || isSaving.current) return;
 
     const timeout = setTimeout(async () => {
@@ -86,30 +112,40 @@ export default function Home() {
 
       try {
         if (!journalId) {
+          // CREATE NEW
           const res = await fetch("/api/journal", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: text }),
+            body: JSON.stringify({ content: text, category: category }),
           });
           const data = await res.json();
           if (data?.id) {
             setJournalId(data.id);
             setJournals((prev) => [data, ...prev]);
-            detectMood(text); // Deteksi mood setelah save pertama
+            detectMood(text);
           }
         } else {
-          await fetch(`/api/journal/${journalId}`, {
+          // UPDATE EXISTING
+          const res = await fetch(`/api/journal/${journalId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: text }),
+            body: JSON.stringify({ content: text, category: category }),
           });
-          setJournals((prev) =>
-            prev.map((j) => (j.id === journalId ? { ...j, content: text } : j)),
-          );
-          detectMood(text); // Update mood setiap kali save (typing pause)
+
+          if (res.ok) {
+            setJournals((prev) =>
+              prev.map((j) =>
+                j.id === journalId
+                  ? { ...j, content: text, category: category }
+                  : j,
+              ),
+            );
+            detectMood(text);
+          }
         }
         setStatus("Saved");
       } catch (err) {
+        console.error("Save Error:", err);
         setStatus("Error");
       } finally {
         isSaving.current = false;
@@ -117,7 +153,8 @@ export default function Home() {
     }, 2000);
 
     return () => clearTimeout(timeout);
-  }, [text, journalId]);
+    // journalId sengaja dihapus dari dependency agar tidak trigger loop setelah POST
+  }, [text, category]);
 
   const handleAIPreview = async () => {
     if (!text.trim() || text.length < 10) return;
@@ -144,14 +181,10 @@ export default function Home() {
     setShowComparison(false);
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
-  };
-
   const startNewEntry = () => {
     setText("");
     setJournalId(null);
+    setCategory("Personal");
     setMood("Netral");
     setStatus("Ready");
     setIsSidebarOpen(false);
@@ -163,10 +196,7 @@ export default function Home() {
     <div className="flex h-screen bg-white overflow-hidden antialiased text-[#444746]">
       {/* SIDEBAR */}
       <aside
-        className={`
-          fixed inset-y-0 left-0 z-50 w-72 bg-[#F8FAFD] border-r border-slate-100 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 flex flex-col h-full
-          ${isSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}
-        `}
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#F8FAFD] border-r border-slate-100 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 flex flex-col h-full ${isSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}
       >
         <div className="p-8 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -199,42 +229,57 @@ export default function Home() {
 
         <div className="flex-1 flex flex-col min-h-0">
           <p className="px-9 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 shrink-0">
-            Recent Notes
+            Organization
           </p>
-          <div className="flex-1 overflow-y-auto px-4 pb-10">
-            <div className="space-y-1.5">
-              {journals.map((j) => (
-                <button
-                  key={j.id}
-                  onClick={() => {
-                    setJournalId(j.id);
-                    setText(j.content);
-                    setIsSidebarOpen(false);
-                  }}
-                  className={`w-full text-left px-5 py-4 rounded-2xl transition-all flex flex-col gap-1 ${
-                    journalId === j.id
-                      ? "bg-[#E3E3E3] text-[#1F1F1F]"
-                      : "hover:bg-[#EAEBEF] text-[#444746]"
-                  }`}
-                >
-                  <p className="line-clamp-1 font-semibold text-[13px] tracking-wide">
-                    {j.content || "Empty thought"}
-                  </p>
-                  <p className="text-[10px] opacity-50 font-medium lowercase">
-                    {new Date(j.created_at).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </p>
-                </button>
-              ))}
-            </div>
+          <div className="flex-1 overflow-y-auto px-4 pb-10 custom-scrollbar">
+            {Object.entries(groupedJournals).map(([catName, items]) => (
+              <div key={catName} className="mb-6">
+                <div className="flex items-center gap-2 px-5 mb-2">
+                  <Folder className="h-3.5 w-3.5 text-indigo-400" />
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-tight">
+                    {catName}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {items.map((j) => (
+                    <button
+                      key={j.id}
+                      onClick={() => {
+                        setJournalId(j.id);
+                        setText(j.content);
+                        setCategory(j.category || "Personal");
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`w-full text-left px-5 py-3 rounded-xl transition-all flex items-start gap-3 ${journalId === j.id ? "bg-indigo-50 text-indigo-700 shadow-sm" : "hover:bg-slate-50"}`}
+                    >
+                      <Hash
+                        className={`h-3 w-3 mt-1 shrink-0 ${journalId === j.id ? "text-indigo-400" : "text-slate-300"}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="line-clamp-1 font-medium text-[13px]">
+                          {j.content || "Empty thought"}
+                        </p>
+                        <p className="text-[10px] opacity-50 mt-0.5">
+                          {new Date(j.created_at).toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "short",
+                          })}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
         <div className="p-6 shrink-0 bg-[#F8FAFD] border-t border-slate-200">
           <button
-            onClick={handleLogout}
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.push("/login");
+            }}
             className="flex items-center gap-3 w-full px-5 py-3.5 text-[#444746] hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all text-sm font-semibold group"
           >
             <LogOut className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
@@ -280,7 +325,7 @@ export default function Home() {
                 Tidy-up
               </span>
             </Button>
-            <div className="h-10 w-10 rounded-full bg-indigo-50 border-2 border-white shadow-sm flex items-center justify-center text-indigo-600 font-bold text-xs uppercase">
+            <div className="h-10 w-10 rounded-full bg-indigo-50 border-2 border-white shadow-sm flex items-center justify-center text-indigo-600 font-bold text-xs">
               JD
             </div>
           </div>
@@ -295,12 +340,11 @@ export default function Home() {
               <div className="flex items-center gap-2 mb-4 text-indigo-500 font-bold text-[10px] uppercase tracking-[0.3em]">
                 <PenLine className="h-3 w-3" /> Digital Journal
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold text-[#1F1F1F] tracking-tight leading-tight">
+              <h1 className="text-4xl md:text-5xl font-bold text-[#1F1F1F] tracking-tight leading-tight mb-6">
                 {journalId ? "Edit ceritamu." : "Mau cerita apa hari ini?"}
               </h1>
 
-              {/* --- UI MOOD INDICATOR --- */}
-              <div className="flex items-center gap-3 mt-6">
+              <div className="flex flex-wrap items-center gap-3">
                 <p className="text-slate-400 text-sm font-medium italic">
                   {new Date().toLocaleDateString("id-ID", {
                     weekday: "long",
@@ -308,26 +352,65 @@ export default function Home() {
                     month: "long",
                   })}
                 </p>
-                <span className="text-slate-200">|</span>
+                <span className="text-slate-200 hidden md:inline">|</span>
+
+                <div className="relative" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                    className="flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/60 transition-all duration-200"
+                  >
+                    <div
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        category === "Work"
+                          ? "bg-blue-400"
+                          : category === "Ideas"
+                            ? "bg-amber-400"
+                            : category === "Urgent"
+                              ? "bg-red-400"
+                              : "bg-indigo-400"
+                      }`}
+                    />
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-600">
+                      {category}
+                    </span>
+                    <ChevronDown
+                      className={`h-3 w-3 text-slate-400 transition-transform duration-300 ${isCategoryOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+
+                  {isCategoryOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setIsCategoryOpen(false)}
+                      />
+                      <div className="absolute top-full mt-2 left-0 w-40 bg-white border border-slate-100 shadow-xl shadow-slate-200/20 rounded-2xl p-1.5 z-20 overflow-hidden">
+                        {categories.map((cat) => (
+                          <button
+                            key={cat}
+                            onClick={() => {
+                              setCategory(cat);
+                              setIsCategoryOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-colors ${category === cat ? "bg-indigo-50 text-indigo-600" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 <div
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all duration-500 ${
-                    mood === "Senang"
-                      ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
-                      : mood === "Sedih"
-                        ? "bg-blue-100 text-blue-700 border border-blue-200"
-                        : mood === "Marah"
-                          ? "bg-red-100 text-red-700 border border-red-200"
-                          : mood === "Cemas"
-                            ? "bg-purple-100 text-purple-700 border border-purple-200"
-                            : "bg-slate-100 text-slate-500 border border-slate-200"
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all duration-500 ${mood === "Senang" ? "bg-yellow-100 text-yellow-700" : mood === "Sedih" ? "bg-blue-100 text-blue-700" : mood === "Marah" ? "bg-red-100 text-red-700" : mood === "Cemas" ? "bg-purple-100 text-purple-700" : "bg-slate-100 text-slate-500"}`}
                 >
                   {isAnalyzingMood ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
                     <Smile className="h-3.5 w-3.5" />
                   )}
-                  {isAnalyzingMood ? "Analyzing mood..." : `Mood: ${mood}`}
+                  {isAnalyzingMood ? "Analyzing..." : `Mood: ${mood}`}
                 </div>
               </div>
             </div>
@@ -336,19 +419,18 @@ export default function Home() {
               id="journal-input"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Hari ini ada kejadian apa?"
+              placeholder="Ketik ceritamu di sini..."
               className="w-full border-none focus-visible:ring-0 text-xl md:text-2xl p-0 bg-transparent resize-none min-h-[500px] leading-[1.8] text-[#1F1F1F] placeholder:text-[#C4C7C5] font-medium"
             />
           </div>
         </div>
 
-        {/* MODAL COMPARISON (Tetap sama) */}
         {showComparison && (
-          <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-5xl rounded-[2.5rem] overflow-hidden flex flex-col max-h-[90vh] shadow-2xl">
               <div className="p-8 border-b flex justify-between items-center bg-slate-50/50">
-                <h2 className="text-2xl font-black text-slate-900">
-                  AI TIDY-UP PREVIEW
+                <h2 className="text-2xl font-black text-slate-900 uppercase">
+                  AI Tidy-up Preview
                 </h2>
                 <Button
                   variant="ghost"
@@ -388,14 +470,14 @@ export default function Home() {
                   onClick={() => setShowComparison(false)}
                   className="flex-1 py-8 rounded-[1.25rem] font-bold text-lg border-2"
                 >
-                  Tetap Pakai Yang Asli
+                  Batal
                 </Button>
               </div>
             </div>
           </div>
         )}
 
-        {/* FLOATING STATS */}
+        {/* WORD COUNTER */}
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md border border-slate-100 px-8 py-3 rounded-full flex items-center gap-6 shadow-sm">
           <div className="flex flex-col items-center">
             <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">

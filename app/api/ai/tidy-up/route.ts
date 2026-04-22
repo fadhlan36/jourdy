@@ -1,40 +1,28 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 
 export async function POST(req: Request) {
     try {
         const { content } = await req.json();
         if (!content) return NextResponse.json({ error: "Konten kosong" }, { status: 400 });
 
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = process.env.GROQ_API_KEY;
         if (!apiKey) return NextResponse.json({ error: "API Key missing" }, { status: 500 });
 
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const groq = new Groq({ apiKey });
+        const completion = await groq.chat.completions.create({
+            model: "llama-3.1-8b-instant",
+            max_tokens: 1024,
+            messages: [{
+                role: "user",
+                content: `Kamu adalah asisten jurnal. Rapikan tulisan ini agar lebih mengalir dan reflektif dalam Bahasa Indonesia tanpa mengubah maknanya. Langsung berikan hasil revisinya saja tanpa komentar/tanda kutip: "${content}"`
+            }]
+        });
 
-        // KITA PAKAI GEMINI-PRO (Paling Stabil, Jarang Error 404)
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-
-        const prompt = `Kamu adalah asisten jurnal. Rapikan tulisan ini agar lebih mengalir dan reflektif dalam Bahasa Indonesia tanpa mengubah maknanya. Langsung berikan hasil revisinya saja tanpa komentar/tanda kutip: "${content}"`;
-
-        console.log("Memproses Tidy-up menggunakan model: gemini-pro...");
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-
-        return NextResponse.json({ refinedText: text });
+        const refinedText = completion.choices[0].message.content ?? content;
+        return NextResponse.json({ refinedText });
     } catch (error: any) {
-        console.error("--- LOG ERROR ---");
-        console.error("Pesan:", error.message);
-
-        // Jika gemini-pro pun gagal karena masalah region
-        if (error.message.includes("location is not supported")) {
-            return NextResponse.json(
-                { error: "Google AI belum tersedia di koneksi internetmu. Coba gunakan VPN (Singapura)." },
-                { status: 500 }
-            );
-        }
-
+        console.error("Tidy-up Error:", error.message);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

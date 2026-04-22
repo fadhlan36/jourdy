@@ -34,12 +34,20 @@ export default function RegisterPage() {
       setMessage("Isi semua data dulu ya.");
       return;
     }
+    if (password.length < 6) {
+      setMessage("Password minimal 6 karakter.");
+      return;
+    }
+
     setLoading(true);
     setMessage("");
 
     const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password: password.trim(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
 
     if (error) {
@@ -49,8 +57,10 @@ export default function RegisterPage() {
       return;
     }
 
+    // Jika registrasi berhasil, biasanya session otomatis dibuat,
+    // kita sign out agar user login manual lewat halaman login.
     await supabase.auth.signOut();
-    setMessage("Akun berhasil dibuat! Mengalihkan...");
+    setMessage("Akun berhasil dibuat! Silahkan login.");
     setIsSuccess(true);
     setLoading(false);
 
@@ -59,7 +69,6 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4 relative overflow-hidden">
-      {/* Decorative Blobs */}
       <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-100 rounded-full blur-3xl opacity-60 animate-pulse" />
       <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-60" />
 
@@ -81,56 +90,56 @@ export default function RegisterPage() {
         </CardHeader>
 
         <CardContent className="space-y-6 pb-12 px-8">
-          <div className="space-y-4">
-            {/* Email Input */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleRegister();
+            }}
+            className="space-y-4"
+          >
             <div className="relative group">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors z-10" />
               <Input
                 type="email"
                 placeholder="Alamat Email Baru"
-                className="pl-12 h-13 bg-white border-slate-200 rounded-xl focus-visible:ring-2 focus-visible:ring-indigo-600 text-slate-900 placeholder:text-slate-400 font-semibold opacity-100 ring-offset-0 border-2"
+                className="pl-12 h-13 bg-white border-slate-200 rounded-xl focus-visible:ring-2 focus-visible:ring-indigo-600 text-slate-900 placeholder:text-slate-400 font-semibold border-2"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
-            {/* Password Input */}
             <div className="relative group">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors z-10" />
               <Input
                 type="password"
                 placeholder="Buat Kata Sandi"
-                className="pl-12 h-13 bg-white border-slate-200 rounded-xl focus-visible:ring-2 focus-visible:ring-indigo-600 text-slate-900 placeholder:text-slate-400 font-semibold opacity-100 ring-offset-0 border-2"
+                className="pl-12 h-13 bg-white border-slate-200 rounded-xl focus-visible:ring-2 focus-visible:ring-indigo-600 text-slate-900 placeholder:text-slate-400 font-semibold border-2"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-          </div>
 
-          {message && (
-            <div
-              className={`flex items-center justify-center gap-2 text-[13px] py-3 px-4 rounded-xl font-bold border transition-all animate-in fade-in slide-in-from-top-2 ${
-                isSuccess
-                  ? "bg-green-50 text-green-600 border-green-100"
-                  : "bg-red-50 text-red-600 border-red-100"
-              }`}
-            >
-              {isSuccess && <CheckCircle2 className="h-4 w-4" />}
-              {message}
-            </div>
-          )}
-
-          <Button
-            className="w-full h-13 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-95 shadow-xl text-md"
-            onClick={handleRegister}
-            disabled={loading || isSuccess}
-          >
-            {loading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              "Buat Akun Sekarang"
+            {message && (
+              <div
+                className={`flex items-center justify-center gap-2 text-[13px] py-3 px-4 rounded-xl font-bold border transition-all animate-in fade-in slide-in-from-top-2 ${isSuccess ? "bg-green-50 text-green-600 border-green-100" : "bg-red-50 text-red-600 border-red-100"}`}
+              >
+                {isSuccess && <CheckCircle2 className="h-4 w-4" />}
+                {message}
+              </div>
             )}
-          </Button>
+
+            <Button
+              type="submit"
+              className="w-full h-13 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-95 shadow-xl text-md"
+              disabled={loading || isSuccess}
+            >
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                "Buat Akun Sekarang"
+              )}
+            </Button>
+          </form>
 
           <div className="text-center">
             <button
