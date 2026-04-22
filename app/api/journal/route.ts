@@ -53,6 +53,7 @@ export async function POST(req: Request) {
             .insert([{
                 content: body.content,
                 category: body.category || "Personal",
+                mood: body.mood || "Netral",
                 user_id: user.id
             }])
             .select().single();

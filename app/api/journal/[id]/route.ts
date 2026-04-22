@@ -26,12 +26,12 @@ export async function PUT(
         const body = await req.json();
         const { id } = await params;
 
-        // Sekarang mengupdate content DAN category
         const { data, error } = await supabase
             .from("journals")
             .update({
                 content: body.content,
-                category: body.category // Ditambahkan agar kategori tersimpan saat diubah di UI
+                category: body.category,
+                mood: body.mood || "Netral",
             })
             .eq("id", id)
             .eq("user_id", user.id)

@@ -18,8 +18,18 @@ import {
   Folder,
   Hash,
   ChevronDown,
-  Search, // Import icon Search
+  Search,
+  CalendarDays,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { MoodCalendar } from "@/components/mood-calender";
 
 export default function Home() {
   const [text, setText] = useState("");
@@ -27,8 +37,7 @@ export default function Home() {
   const [status, setStatus] = useState("Ready");
   const [journalId, setJournalId] = useState<string | null>(null);
 
-  // --- STATE SEARCH & CATEGORY ---
-  const [searchQuery, setSearchQuery] = useState(""); // State baru untuk pencarian
+  const [searchQuery, setSearchQuery] = useState("");
   const [category, setCategory] = useState("Personal");
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const categories = ["Personal", "Work", "Ideas", "Urgent"];
@@ -36,7 +45,6 @@ export default function Home() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // --- STATE AI ---
   const [isRefining, setIsRefining] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
   const [refinedText, setRefinedText] = useState("");
@@ -45,23 +53,31 @@ export default function Home() {
 
   const router = useRouter();
   const isSaving = useRef(false);
+  const lastMoodCheck = useRef(0);
+  const lastContentAnalyzed = useRef("");
+  const currentCategory = useRef(category);
+  const currentMood = useRef(mood);
 
-  // --- ORGANIZATION & SEARCH LOGIC ---
+  // Sinkronkan Ref agar auto-save selalu punya data terbaru
+  useEffect(() => {
+    currentCategory.current = category;
+  }, [category]);
+  useEffect(() => {
+    currentMood.current = mood;
+  }, [mood]);
+
   const groupedJournals = useMemo(() => {
     const groups: { [key: string]: any[] } = {};
-
-    // Filter berdasarkan teks pencarian sebelum dikelompokkan
     const filtered = journals.filter((j) =>
       j.content?.toLowerCase().includes(searchQuery.toLowerCase()),
     );
-
     filtered.forEach((j) => {
       const cat = j.category || "Personal";
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push(j);
     });
     return groups;
-  }, [journals, searchQuery]); // Tambahkan searchQuery sebagai dependency
+  }, [journals, searchQuery]);
 
   const fetchJournals = async () => {
     try {
@@ -75,7 +91,7 @@ export default function Home() {
       }
       setJournals(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Gagal mengambil data:", err);
+      console.error("Gagal ambil jurnal:", err);
     }
   };
 
@@ -92,24 +108,79 @@ export default function Home() {
     checkUser();
   }, [router]);
 
-  const detectMood = async (content: string) => {
-    if (content.length < 15) return;
+  // --- FUNGSI DETEKSI MOOD (SMART & RESPONSIVE) ---
+  const detectMood = async (
+    content: string,
+    id: string | null,
+    force = false,
+  ) => {
+    if (content.length < 15 || !id || isAnalyzingMood) return;
+
+    // Jika konten sama persis dengan scan terakhir AI, stop.
+    if (content === lastContentAnalyzed.current && !force) return;
+
+    const now = Date.now();
+    const isInitialCheck = lastContentAnalyzed.current === "";
+    const timeSinceLast = now - lastMoodCheck.current;
+    const charDiff = Math.abs(
+      content.length - lastContentAnalyzed.current.length,
+    );
+
+    // Logika Pintar:
+    // Izinkan scan jika: Baru buka (Initial) OR Paksa (Force)
+    // OR (Sudah lewat 15 detik DAN ada perubahan teks)
+    // OR (Belum 15 detik TAPI ngetik banyak banget > 20 karakter)
+    if (!force && !isInitialCheck && timeSinceLast < 15000 && charDiff < 20) {
+      return;
+    }
+
+    lastMoodCheck.current = now;
+    lastContentAnalyzed.current = content;
     setIsAnalyzingMood(true);
+
     try {
       const res = await fetch("/api/ai/analyze-mood", {
         method: "POST",
         body: JSON.stringify({ content }),
       });
       const data = await res.json();
-      if (data.mood) setMood(data.mood);
+      const detectedMood = data.mood || "Netral";
+
+      // Sinkronkan state dan ref mood segera
+      setMood(detectedMood);
+      currentMood.current = detectedMood;
+
+      // Update Database langsung agar mood tidak hilang saat refresh
+      await fetch(`/api/journal/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          category: currentCategory.current,
+          mood: detectedMood,
+        }),
+      });
+
+      setJournals((prev) =>
+        prev.map((j) =>
+          j.id === id
+            ? {
+                ...j,
+                mood: detectedMood,
+                content,
+                category: currentCategory.current,
+              }
+            : j,
+        ),
+      );
     } catch (err) {
-      setMood("Netral");
+      console.error("Gagal deteksi mood:", err);
     } finally {
       setIsAnalyzingMood(false);
     }
   };
 
-  // --- AUTO SAVE EFFECT ---
+  // --- AUTO-SAVE EFFECT ---
   useEffect(() => {
     if (!text.trim() || isSaving.current) return;
 
@@ -122,30 +193,32 @@ export default function Home() {
           const res = await fetch("/api/journal", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: text, category: category }),
+            body: JSON.stringify({ content: text, category, mood: "Netral" }),
           });
           const data = await res.json();
           if (data?.id) {
             setJournalId(data.id);
             setJournals((prev) => [data, ...prev]);
-            detectMood(text);
+            detectMood(text, data.id, true);
           }
         } else {
           const res = await fetch(`/api/journal/${journalId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: text, category: category }),
+            body: JSON.stringify({
+              content: text,
+              category,
+              mood: currentMood.current, // Menggunakan mood terbaru dari ref
+            }),
           });
 
           if (res.ok) {
             setJournals((prev) =>
               prev.map((j) =>
-                j.id === journalId
-                  ? { ...j, content: text, category: category }
-                  : j,
+                j.id === journalId ? { ...j, content: text, category } : j,
               ),
             );
-            detectMood(text);
+            detectMood(text, journalId);
           }
         }
         setStatus("Saved");
@@ -157,7 +230,7 @@ export default function Home() {
     }, 2000);
 
     return () => clearTimeout(timeout);
-  }, [text, category]);
+  }, [text, category, journalId]);
 
   const handleAIPreview = async () => {
     if (!text.trim() || text.length < 10) return;
@@ -182,6 +255,7 @@ export default function Home() {
   const applyRefinement = () => {
     setText(refinedText);
     setShowComparison(false);
+    if (journalId) detectMood(refinedText, journalId, true);
   };
 
   const startNewEntry = () => {
@@ -189,8 +263,11 @@ export default function Home() {
     setJournalId(null);
     setCategory("Personal");
     setMood("Netral");
+    currentMood.current = "Netral";
     setStatus("Ready");
     setIsSidebarOpen(false);
+    lastMoodCheck.current = 0;
+    lastContentAnalyzed.current = "";
   };
 
   if (checkingAuth) return null;
@@ -220,90 +297,119 @@ export default function Home() {
           </Button>
         </div>
 
-        <div className="px-5 mb-6 shrink-0">
+        <div className="px-5 mb-6 shrink-0 space-y-3">
           <Button
             onClick={startNewEntry}
-            className="w-full flex items-center justify-center gap-3 py-7 bg-[#C2E7FF] hover:bg-[#B3D7EF] text-[#001D35] rounded-[1.25rem] shadow-sm transition-all border-none font-semibold text-sm"
+            className="w-full flex items-center justify-center gap-3 py-7 bg-[#C2E7FF] hover:bg-[#B3D7EF] text-[#001D35] rounded-[1.25rem] shadow-sm transition-all font-semibold text-sm border-none"
           >
             <Plus className="h-5 w-5" />
             <span>New Entry</span>
           </Button>
+
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="flex items-center gap-3 px-4 py-3 w-full text-slate-600 hover:bg-white hover:shadow-sm rounded-xl transition-all group border border-transparent hover:border-slate-100">
+                <div className="p-2 bg-slate-100 group-hover:bg-indigo-100 group-hover:text-indigo-600 rounded-lg transition-colors">
+                  <CalendarDays size={18} />
+                </div>
+                <span className="text-sm font-semibold">Mood Calendar</span>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px] rounded-[2rem] p-8 border-none outline-none">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold text-center text-slate-800 mb-2">
+                  Your Mood Journey
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  Statistik harian kamu.
+                </DialogDescription>
+              </DialogHeader>
+              <MoodCalendar />
+            </DialogContent>
+          </Dialog>
         </div>
 
-        {/* SEARCH INPUT */}
         <div className="px-5 mb-6 shrink-0">
           <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
               placeholder="Cari jurnal..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-9 pr-4 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all placeholder:text-slate-400"
+              className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-9 pr-4 text-xs font-medium focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all"
             />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
-              >
-                <X className="h-3 w-3 text-slate-400 hover:text-slate-600" />
-              </button>
-            )}
           </div>
         </div>
 
         <div className="flex-1 flex flex-col min-h-0">
-          <p className="px-9 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 shrink-0">
+          <p className="px-9 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">
             Organization
           </p>
-          <div className="flex-1 overflow-y-auto px-4 pb-10 custom-scrollbar">
-            {Object.entries(groupedJournals).length === 0 ? (
-              <div className="px-5 py-10 text-center">
-                <p className="text-xs text-slate-400 font-medium italic">
-                  Tidak ada jurnal ditemukan
-                </p>
-              </div>
-            ) : (
-              Object.entries(groupedJournals).map(([catName, items]) => (
-                <div key={catName} className="mb-6">
-                  <div className="flex items-center gap-2 px-5 mb-2">
-                    <Folder className="h-3.5 w-3.5 text-indigo-400" />
-                    <span className="text-xs font-bold text-slate-600 uppercase tracking-tight">
-                      {catName}
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    {items.map((j) => (
-                      <button
-                        key={j.id}
-                        onClick={() => {
-                          setJournalId(j.id);
-                          setText(j.content);
-                          setCategory(j.category || "Personal");
-                          setIsSidebarOpen(false);
-                        }}
-                        className={`w-full text-left px-5 py-3 rounded-xl transition-all flex items-start gap-3 ${journalId === j.id ? "bg-indigo-50 text-indigo-700 shadow-sm" : "hover:bg-slate-50"}`}
-                      >
-                        <Hash
-                          className={`h-3 w-3 mt-1 shrink-0 ${journalId === j.id ? "text-indigo-400" : "text-slate-300"}`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="line-clamp-1 font-medium text-[13px]">
-                            {j.content || "Empty thought"}
-                          </p>
-                          <p className="text-[10px] opacity-50 mt-0.5">
+          <div className="flex-1 overflow-y-auto px-4 pb-10">
+            {Object.entries(groupedJournals).map(([catName, items]) => (
+              <div key={catName} className="mb-6">
+                <div className="flex items-center gap-2 px-5 mb-2">
+                  <Folder className="h-3.5 w-3.5 text-indigo-400" />
+                  <span className="text-xs font-bold text-slate-600 uppercase">
+                    {catName}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {items.map((j) => (
+                    <button
+                      key={j.id}
+                      onClick={() => {
+                        setJournalId(j.id);
+                        setText(j.content);
+                        setCategory(j.category || "Personal");
+
+                        // SINKRONISASI MOOD SAAT KLIK SIDEBAR
+                        setMood(j.mood || "Netral");
+                        currentMood.current = j.mood || "Netral";
+
+                        setIsSidebarOpen(false);
+
+                        // RESET TRACKER AGAR AI SIAP SCAN ULANG SAAT DIEDIT
+                        lastContentAnalyzed.current = "";
+                        lastMoodCheck.current = 0;
+                      }}
+                      className={`w-full text-left px-5 py-3 rounded-xl transition-all flex items-start gap-3 ${journalId === j.id ? "bg-indigo-50 text-indigo-700" : "hover:bg-slate-50"}`}
+                    >
+                      <Hash
+                        className={`h-3 w-3 mt-1 shrink-0 ${journalId === j.id ? "text-indigo-400" : "text-slate-300"}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="line-clamp-1 font-medium text-[13px]">
+                          {j.content || "Empty thought"}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-[10px] opacity-50">
                             {new Date(j.created_at).toLocaleDateString(
                               "id-ID",
                               { day: "numeric", month: "short" },
                             )}
                           </p>
+                          <div
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              j.mood === "Senang"
+                                ? "bg-yellow-400"
+                                : j.mood === "Sedih"
+                                  ? "bg-blue-400"
+                                  : j.mood === "Marah"
+                                    ? "bg-red-400"
+                                    : j.mood === "Cemas"
+                                      ? "bg-purple-400"
+                                      : "bg-slate-300"
+                            }`}
+                          />
                         </div>
-                      </button>
-                    ))}
-                  </div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -315,13 +421,13 @@ export default function Home() {
             }}
             className="flex items-center gap-3 w-full px-5 py-3.5 text-[#444746] hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all text-sm font-semibold group"
           >
-            <LogOut className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
+            <LogOut className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
             Sign Out
           </button>
         </div>
       </aside>
 
-      {/* MAIN CONTENT (Tidak berubah banyak) */}
+      {/* MAIN CONTENT */}
       <main className="flex-1 flex flex-col bg-white overflow-hidden relative">
         <header className="h-20 flex items-center justify-between px-8 md:px-12 shrink-0 border-b border-slate-50">
           <div className="flex items-center gap-4">
@@ -343,25 +449,20 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={handleAIPreview}
-              disabled={isRefining || !text.trim()}
-              className="bg-indigo-600 text-white rounded-full px-5 py-5 flex gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
-            >
-              {isRefining ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              <span className="hidden md:inline font-bold text-xs uppercase tracking-tight">
-                Tidy-up
-              </span>
-            </Button>
-            <div className="h-10 w-10 rounded-full bg-indigo-50 border-2 border-white shadow-sm flex items-center justify-center text-indigo-600 font-bold text-xs">
-              JD
-            </div>
-          </div>
+          <Button
+            onClick={handleAIPreview}
+            disabled={isRefining || !text.trim()}
+            className="bg-indigo-600 text-white rounded-full px-5 py-5 flex gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-100"
+          >
+            {isRefining ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            <span className="hidden md:inline font-bold text-xs uppercase tracking-tight">
+              Tidy-up
+            </span>
+          </Button>
         </header>
 
         <div
@@ -390,7 +491,7 @@ export default function Home() {
                 <div className="relative" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                    className="flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/60 transition-all duration-200"
+                    className="flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-slate-50 border border-slate-200/60 transition-all"
                   >
                     <div
                       className={`h-1.5 w-1.5 rounded-full ${category === "Work" ? "bg-blue-400" : category === "Ideas" ? "bg-amber-400" : category === "Urgent" ? "bg-red-400" : "bg-indigo-400"}`}
@@ -399,35 +500,39 @@ export default function Home() {
                       {category}
                     </span>
                     <ChevronDown
-                      className={`h-3 w-3 text-slate-400 transition-transform duration-300 ${isCategoryOpen ? "rotate-180" : ""}`}
+                      className={`h-3 w-3 text-slate-400 transition-transform ${isCategoryOpen ? "rotate-180" : ""}`}
                     />
                   </button>
                   {isCategoryOpen && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setIsCategoryOpen(false)}
-                      />
-                      <div className="absolute top-full mt-2 left-0 w-40 bg-white border border-slate-100 shadow-xl rounded-2xl p-1.5 z-20 overflow-hidden">
-                        {categories.map((cat) => (
-                          <button
-                            key={cat}
-                            onClick={() => {
-                              setCategory(cat);
-                              setIsCategoryOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-colors ${category === cat ? "bg-indigo-50 text-indigo-600" : "text-slate-500 hover:bg-slate-50"}`}
-                          >
-                            {cat}
-                          </button>
-                        ))}
-                      </div>
-                    </>
+                    <div className="absolute top-full mt-2 left-0 w-40 bg-white border border-slate-100 shadow-xl rounded-2xl p-1.5 z-20 overflow-hidden">
+                      {categories.map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => {
+                            setCategory(cat);
+                            setIsCategoryOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-colors ${category === cat ? "bg-indigo-50 text-indigo-600" : "text-slate-500 hover:bg-slate-50"}`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
 
                 <div
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all duration-500 ${mood === "Senang" ? "bg-yellow-100 text-yellow-700" : mood === "Sedih" ? "bg-blue-100 text-blue-700" : mood === "Marah" ? "bg-red-100 text-red-700" : mood === "Cemas" ? "bg-purple-100 text-purple-700" : "bg-slate-100 text-slate-500"}`}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all duration-500 ${
+                    mood === "Senang"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : mood === "Sedih"
+                        ? "bg-blue-100 text-blue-700"
+                        : mood === "Marah"
+                          ? "bg-red-100 text-red-700"
+                          : mood === "Cemas"
+                            ? "bg-purple-100 text-purple-700"
+                            : "bg-slate-100 text-slate-500"
+                  }`}
                 >
                   {isAnalyzingMood ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -449,7 +554,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Perbandingan AI & Word Counter tetap sama */}
+        {/* Comparison Modal */}
         {showComparison && (
           <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-5xl rounded-[2.5rem] overflow-hidden flex flex-col max-h-[90vh] shadow-2xl">

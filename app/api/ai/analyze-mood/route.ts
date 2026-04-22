@@ -11,18 +11,25 @@ export async function POST(req: Request) {
         const completion = await groq.chat.completions.create({
             model: "llama-3.1-8b-instant",
             max_tokens: 10,
+            temperature: 0, // Agar jawaban tidak berubah-ubah
             messages: [{
+                role: "system",
+                content: "Kamu adalah asisten analisis mood. Jawab HANYA dengan satu kata: Senang, Sedih, Marah, Cemas, atau Netral. Tanpa tanda baca, tanpa penjelasan."
+            }, {
                 role: "user",
-                content: `Analisis mood dari potongan jurnal berikut.
-Berikan jawaban HANYA DALAM SATU KATA dari pilihan berikut: Senang, Sedih, Marah, Cemas, Netral.
-JANGAN berikan penjelasan atau tanda baca.
-
-Teks: "${content}"`
+                content: `Analisis teks ini: "${content}"`
             }]
         });
 
-        const mood = completion.choices[0].message.content?.trim() ?? "Netral";
-        return NextResponse.json({ mood });
+        // Bersihkan hasil: hapus titik, spasi, atau karakter non-huruf
+        let rawMood = completion.choices[0].message.content?.trim() || "Netral";
+        let mood = rawMood.replace(/[^a-zA-Z]/g, "");
+
+        // Validasi kata yang diperbolehkan
+        const allowed = ["Senang", "Sedih", "Marah", "Cemas", "Netral"];
+        const finalMood = allowed.includes(mood) ? mood : "Netral";
+
+        return NextResponse.json({ mood: finalMood });
     } catch (error: any) {
         console.error("Mood Analysis Error:", error.message);
         return NextResponse.json({ mood: "Netral" });
