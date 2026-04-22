@@ -26,9 +26,13 @@ export async function PUT(
         const body = await req.json();
         const { id } = await params;
 
+        // Sekarang mengupdate content DAN category
         const { data, error } = await supabase
             .from("journals")
-            .update({ content: body.content })
+            .update({
+                content: body.content,
+                category: body.category // Ditambahkan agar kategori tersimpan saat diubah di UI
+            })
             .eq("id", id)
             .eq("user_id", user.id)
             .select().single();
@@ -36,6 +40,7 @@ export async function PUT(
         if (error) throw error;
         return NextResponse.json({ message: "Berhasil update", data });
     } catch (err: any) {
+        console.error("Update API Error:", err.message);
         return NextResponse.json({ error: "Gagal update" }, { status: 400 });
     }
 }

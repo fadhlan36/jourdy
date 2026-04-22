@@ -18,6 +18,7 @@ import {
   Folder,
   Hash,
   ChevronDown,
+  Search, // Import icon Search
 } from "lucide-react";
 
 export default function Home() {
@@ -26,7 +27,8 @@ export default function Home() {
   const [status, setStatus] = useState("Ready");
   const [journalId, setJournalId] = useState<string | null>(null);
 
-  // --- STATE CATEGORY ---
+  // --- STATE SEARCH & CATEGORY ---
+  const [searchQuery, setSearchQuery] = useState(""); // State baru untuk pencarian
   const [category, setCategory] = useState("Personal");
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const categories = ["Personal", "Work", "Ideas", "Urgent"];
@@ -44,21 +46,27 @@ export default function Home() {
   const router = useRouter();
   const isSaving = useRef(false);
 
-  // --- ORGANIZATION LOGIC ---
+  // --- ORGANIZATION & SEARCH LOGIC ---
   const groupedJournals = useMemo(() => {
     const groups: { [key: string]: any[] } = {};
-    journals.forEach((j) => {
+
+    // Filter berdasarkan teks pencarian sebelum dikelompokkan
+    const filtered = journals.filter((j) =>
+      j.content?.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+
+    filtered.forEach((j) => {
       const cat = j.category || "Personal";
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push(j);
     });
     return groups;
-  }, [journals]);
+  }, [journals, searchQuery]); // Tambahkan searchQuery sebagai dependency
 
   const fetchJournals = async () => {
     try {
       const res = await fetch("/api/journal", {
-        headers: { "Cache-Control": "no-cache" }, // Mencegah cache agresif Next.js 16
+        headers: { "Cache-Control": "no-cache" },
       });
       const data = await res.json();
       if (res.status === 401) {
@@ -101,9 +109,8 @@ export default function Home() {
     }
   };
 
-  // --- AUTO SAVE EFFECT (IMPROVED) ---
+  // --- AUTO SAVE EFFECT ---
   useEffect(() => {
-    // Jangan simpan jika text kosong atau sedang proses simpan
     if (!text.trim() || isSaving.current) return;
 
     const timeout = setTimeout(async () => {
@@ -112,7 +119,6 @@ export default function Home() {
 
       try {
         if (!journalId) {
-          // CREATE NEW
           const res = await fetch("/api/journal", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -125,7 +131,6 @@ export default function Home() {
             detectMood(text);
           }
         } else {
-          // UPDATE EXISTING
           const res = await fetch(`/api/journal/${journalId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -145,7 +150,6 @@ export default function Home() {
         }
         setStatus("Saved");
       } catch (err) {
-        console.error("Save Error:", err);
         setStatus("Error");
       } finally {
         isSaving.current = false;
@@ -153,7 +157,6 @@ export default function Home() {
     }, 2000);
 
     return () => clearTimeout(timeout);
-    // journalId sengaja dihapus dari dependency agar tidak trigger loop setelah POST
   }, [text, category]);
 
   const handleAIPreview = async () => {
@@ -227,50 +230,80 @@ export default function Home() {
           </Button>
         </div>
 
+        {/* SEARCH INPUT */}
+        <div className="px-5 mb-6 shrink-0">
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+            <input
+              type="text"
+              placeholder="Cari jurnal..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-9 pr-4 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all placeholder:text-slate-400"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2"
+              >
+                <X className="h-3 w-3 text-slate-400 hover:text-slate-600" />
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="flex-1 flex flex-col min-h-0">
           <p className="px-9 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 shrink-0">
             Organization
           </p>
           <div className="flex-1 overflow-y-auto px-4 pb-10 custom-scrollbar">
-            {Object.entries(groupedJournals).map(([catName, items]) => (
-              <div key={catName} className="mb-6">
-                <div className="flex items-center gap-2 px-5 mb-2">
-                  <Folder className="h-3.5 w-3.5 text-indigo-400" />
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-tight">
-                    {catName}
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  {items.map((j) => (
-                    <button
-                      key={j.id}
-                      onClick={() => {
-                        setJournalId(j.id);
-                        setText(j.content);
-                        setCategory(j.category || "Personal");
-                        setIsSidebarOpen(false);
-                      }}
-                      className={`w-full text-left px-5 py-3 rounded-xl transition-all flex items-start gap-3 ${journalId === j.id ? "bg-indigo-50 text-indigo-700 shadow-sm" : "hover:bg-slate-50"}`}
-                    >
-                      <Hash
-                        className={`h-3 w-3 mt-1 shrink-0 ${journalId === j.id ? "text-indigo-400" : "text-slate-300"}`}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="line-clamp-1 font-medium text-[13px]">
-                          {j.content || "Empty thought"}
-                        </p>
-                        <p className="text-[10px] opacity-50 mt-0.5">
-                          {new Date(j.created_at).toLocaleDateString("id-ID", {
-                            day: "numeric",
-                            month: "short",
-                          })}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+            {Object.entries(groupedJournals).length === 0 ? (
+              <div className="px-5 py-10 text-center">
+                <p className="text-xs text-slate-400 font-medium italic">
+                  Tidak ada jurnal ditemukan
+                </p>
               </div>
-            ))}
+            ) : (
+              Object.entries(groupedJournals).map(([catName, items]) => (
+                <div key={catName} className="mb-6">
+                  <div className="flex items-center gap-2 px-5 mb-2">
+                    <Folder className="h-3.5 w-3.5 text-indigo-400" />
+                    <span className="text-xs font-bold text-slate-600 uppercase tracking-tight">
+                      {catName}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {items.map((j) => (
+                      <button
+                        key={j.id}
+                        onClick={() => {
+                          setJournalId(j.id);
+                          setText(j.content);
+                          setCategory(j.category || "Personal");
+                          setIsSidebarOpen(false);
+                        }}
+                        className={`w-full text-left px-5 py-3 rounded-xl transition-all flex items-start gap-3 ${journalId === j.id ? "bg-indigo-50 text-indigo-700 shadow-sm" : "hover:bg-slate-50"}`}
+                      >
+                        <Hash
+                          className={`h-3 w-3 mt-1 shrink-0 ${journalId === j.id ? "text-indigo-400" : "text-slate-300"}`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="line-clamp-1 font-medium text-[13px]">
+                            {j.content || "Empty thought"}
+                          </p>
+                          <p className="text-[10px] opacity-50 mt-0.5">
+                            {new Date(j.created_at).toLocaleDateString(
+                              "id-ID",
+                              { day: "numeric", month: "short" },
+                            )}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -288,7 +321,7 @@ export default function Home() {
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN CONTENT (Tidak berubah banyak) */}
       <main className="flex-1 flex flex-col bg-white overflow-hidden relative">
         <header className="h-20 flex items-center justify-between px-8 md:px-12 shrink-0 border-b border-slate-50">
           <div className="flex items-center gap-4">
@@ -360,15 +393,7 @@ export default function Home() {
                     className="flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/60 transition-all duration-200"
                   >
                     <div
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        category === "Work"
-                          ? "bg-blue-400"
-                          : category === "Ideas"
-                            ? "bg-amber-400"
-                            : category === "Urgent"
-                              ? "bg-red-400"
-                              : "bg-indigo-400"
-                      }`}
+                      className={`h-1.5 w-1.5 rounded-full ${category === "Work" ? "bg-blue-400" : category === "Ideas" ? "bg-amber-400" : category === "Urgent" ? "bg-red-400" : "bg-indigo-400"}`}
                     />
                     <span className="text-[11px] font-bold uppercase tracking-widest text-slate-600">
                       {category}
@@ -377,14 +402,13 @@ export default function Home() {
                       className={`h-3 w-3 text-slate-400 transition-transform duration-300 ${isCategoryOpen ? "rotate-180" : ""}`}
                     />
                   </button>
-
                   {isCategoryOpen && (
                     <>
                       <div
                         className="fixed inset-0 z-10"
                         onClick={() => setIsCategoryOpen(false)}
                       />
-                      <div className="absolute top-full mt-2 left-0 w-40 bg-white border border-slate-100 shadow-xl shadow-slate-200/20 rounded-2xl p-1.5 z-20 overflow-hidden">
+                      <div className="absolute top-full mt-2 left-0 w-40 bg-white border border-slate-100 shadow-xl rounded-2xl p-1.5 z-20 overflow-hidden">
                         {categories.map((cat) => (
                           <button
                             key={cat}
@@ -392,7 +416,7 @@ export default function Home() {
                               setCategory(cat);
                               setIsCategoryOpen(false);
                             }}
-                            className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-colors ${category === cat ? "bg-indigo-50 text-indigo-600" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`}
+                            className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-colors ${category === cat ? "bg-indigo-50 text-indigo-600" : "text-slate-500 hover:bg-slate-50"}`}
                           >
                             {cat}
                           </button>
@@ -425,6 +449,7 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Perbandingan AI & Word Counter tetap sama */}
         {showComparison && (
           <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-5xl rounded-[2.5rem] overflow-hidden flex flex-col max-h-[90vh] shadow-2xl">
@@ -477,7 +502,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* WORD COUNTER */}
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md border border-slate-100 px-8 py-3 rounded-full flex items-center gap-6 shadow-sm">
           <div className="flex flex-col items-center">
             <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
