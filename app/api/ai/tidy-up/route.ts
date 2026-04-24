@@ -13,10 +13,30 @@ export async function POST(req: Request) {
         const completion = await groq.chat.completions.create({
             model: "llama-3.1-8b-instant",
             max_tokens: 1024,
-            messages: [{
-                role: "user",
-                content: `Kamu adalah asisten jurnal. Rapikan tulisan ini agar lebih mengalir dan reflektif dalam Bahasa Indonesia tanpa mengubah maknanya. Langsung berikan hasil revisinya saja tanpa komentar/tanda kutip: "${content}"`
-            }]
+            messages: [
+                {
+                    role: "system",
+                    content: `Kamu adalah editor teks yang sangat ketat. 
+Tugasmu HANYA memperbaiki:
+- Typo (salah ketik)
+- Spasi yang kurang atau berlebih
+- Huruf kapital di awal kalimat
+- Tanda baca yang jelas salah (misalnya koma ganda, titik berulang)
+
+DILARANG KERAS:
+- Mengubah pilihan kata apapun
+- Menambah atau menghapus kata
+- Mengubah struktur kalimat
+- Mengubah gaya penulisan
+- Membuat kalimat "lebih baik" atau "lebih mengalir"
+
+Kembalikan HANYA teks yang sudah diperbaiki, tanpa komentar, tanpa penjelasan, tanpa tanda kutip.`
+                },
+                {
+                    role: "user",
+                    content
+                }
+            ]
         });
 
         const refinedText = completion.choices[0].message.content ?? content;

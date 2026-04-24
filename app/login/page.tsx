@@ -1,141 +1,192 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Loader2, Mail, Lock, Sparkles, ArrowRight } from "lucide-react";
+import { Loader2, Sparkles, ArrowRight } from "lucide-react";
+
+const floatingEmojis = [
+  { emoji: "😊", label: "senang", rotate: -12, size: "text-4xl" },
+  { emoji: "😭", label: "nangis", rotate: 8, size: "text-3xl" },
+  { emoji: "😤", label: "marah", rotate: -6, size: "text-5xl" },
+  { emoji: "😰", label: "cemas", rotate: 14, size: "text-3xl" },
+  { emoji: "🥺", label: "baper", rotate: -10, size: "text-4xl" },
+  { emoji: "😮‍💨", label: "lega", rotate: 5, size: "text-3xl" },
+  { emoji: "🌀", label: "overthinking", rotate: -8, size: "text-3xl" },
+  { emoji: "✨", label: "excited", rotate: 12, size: "text-4xl" },
+  { emoji: "😶‍🌫️", label: "hampa", rotate: -15, size: "text-3xl" },
+  { emoji: "🥰", label: "happy", rotate: 7, size: "text-4xl" },
+  { emoji: "😩", label: "lelah", rotate: -5, size: "text-5xl" },
+  { emoji: "💭", label: "pikiran", rotate: 10, size: "text-3xl" },
+  { emoji: "🫠", label: "meleleh", rotate: -9, size: "text-4xl" },
+  { emoji: "😌", label: "tenang", rotate: 6, size: "text-3xl" },
+  { emoji: "🫀", label: "hati", rotate: -14, size: "text-3xl" },
+  { emoji: "🌿", label: "healing", rotate: 11, size: "text-4xl" },
+];
+
+const positions = [
+  { top: "5%", left: "3%" },
+  { top: "12%", left: "18%" },
+  { top: "3%", left: "38%" },
+  { top: "8%", right: "15%" },
+  { top: "5%", right: "3%" },
+  { top: "25%", left: "2%" },
+  { top: "30%", right: "4%" },
+  { top: "45%", left: "6%" },
+  { top: "50%", right: "2%" },
+  { top: "60%", left: "2%" },
+  { top: "65%", right: "6%" },
+  { top: "72%", left: "15%" },
+  { top: "75%", right: "14%" },
+  { top: "85%", left: "4%" },
+  { top: "88%", right: "3%" },
+  { top: "92%", left: "30%" },
+];
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async () => {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!email || !password) {
       setMessage("Email dan password wajib diisi.");
       return;
     }
     setLoading(true);
     setMessage("");
-
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password.trim(),
       });
-
       if (error) {
         setMessage("Email atau password salah.");
         setLoading(false);
       } else {
-        // PENTING: Refresh agar cookie sinkron ke server component/middleware
         router.refresh();
-        setTimeout(() => {
-          router.push("/");
-        }, 100);
+        setTimeout(() => router.push("/dashboard"), 100);
       }
-    } catch (err) {
+    } catch {
       setMessage("Terjadi kesalahan sistem.");
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
+    <div className="min-h-screen w-full flex items-center justify-center bg-white overflow-hidden relative p-4">
+      {/* Background blobs */}
+      <div className="absolute top-[-80px] left-[-80px] w-[400px] h-[400px] bg-indigo-100 rounded-full blur-3xl opacity-60 pointer-events-none" />
+      <div className="absolute bottom-[-80px] right-[-80px] w-[400px] h-[400px] bg-[#C2E7FF] rounded-full blur-3xl opacity-50 pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-slate-50 rounded-full blur-3xl opacity-80 pointer-events-none" />
 
-      <Card className="w-full max-w-[400px] shadow-2xl border-none bg-white/90 backdrop-blur-md relative z-10 rounded-[2.5rem]">
-        <CardHeader className="space-y-4 text-center pt-10 px-8">
-          <div className="flex justify-center">
-            <div className="bg-indigo-600 p-3 rounded-2xl shadow-lg shadow-indigo-200">
-              <Sparkles className="h-8 w-8 text-white fill-white/20" />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <CardTitle className="text-3xl font-black tracking-tighter text-slate-900">
-              JOURDY
-            </CardTitle>
-            <CardDescription className="text-slate-500 font-medium">
-              Selamat datang kembali, Penulis.
-            </CardDescription>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-6 pb-12 px-8">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleLogin();
+      {/* Floating emojis */}
+      {mounted &&
+        floatingEmojis.map((item, i) => (
+          <div
+            key={i}
+            className="absolute pointer-events-none select-none hidden sm:flex flex-col items-center gap-1"
+            style={{
+              ...positions[i],
+              transform: `rotate(${item.rotate}deg)`,
+              opacity: 0.18,
             }}
-            className="space-y-4"
           >
-            <div className="relative group">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors z-10" />
-              <Input
+            <span className={item.size}>{item.emoji}</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+              {item.label}
+            </span>
+          </div>
+        ))}
+
+      {/* Card */}
+      <div className="w-full max-w-md relative z-10">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 rounded-[1.25rem] shadow-lg shadow-indigo-200 mb-5">
+            <Sparkles className="h-7 w-7 text-white fill-white/20" />
+          </div>
+          <h1 className="text-3xl font-black tracking-tight text-[#1F1F1F] mb-1">
+            Hai, welcome back! 👋
+          </h1>
+          <p className="text-slate-400 text-sm font-medium">
+            lanjut cerita hari ini yuk~
+          </p>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-md border border-slate-100 rounded-[2rem] p-8 shadow-xl shadow-slate-100">
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                Email
+              </label>
+              <input
                 type="email"
-                placeholder="Alamat Email"
-                className="pl-12 h-13 bg-white border-slate-200 rounded-xl focus-visible:ring-2 focus-visible:ring-indigo-600 text-slate-900 placeholder:text-slate-400 font-semibold border-2"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="nama@email.com"
+                className="w-full bg-[#F8FAFD] border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-semibold text-[#1F1F1F] placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-all"
               />
             </div>
 
-            <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors z-10" />
-              <Input
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                Password
+              </label>
+              <input
                 type="password"
-                placeholder="Kata Sandi"
-                className="pl-12 h-13 bg-white border-slate-200 rounded-xl focus-visible:ring-2 focus-visible:ring-indigo-600 text-slate-900 placeholder:text-slate-400 font-semibold border-2"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-[#F8FAFD] border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-semibold text-[#1F1F1F] placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-all"
               />
             </div>
 
             {message && (
-              <div className="bg-red-50 text-red-600 text-[13px] py-3 px-4 rounded-xl text-center font-bold border border-red-100 animate-in fade-in zoom-in duration-200">
+              <div className="bg-red-50 text-red-500 text-xs py-3 px-4 rounded-xl border border-red-100 font-bold text-center">
                 {message}
               </div>
             )}
 
-            <Button
+            <button
               type="submit"
-              className="w-full h-13 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-95 flex gap-2 text-md"
               disabled={loading}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl py-4 text-sm font-black uppercase tracking-tight flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 active:scale-[0.98] transition-all disabled:opacity-60 mt-2"
             >
               {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  Masuk <ArrowRight className="h-4 w-4" />
+                  <span>Masuk</span>
+                  <ArrowRight className="h-4 w-4" />
                 </>
               )}
-            </Button>
+            </button>
           </form>
 
-          <div className="text-center pt-2">
+          <div className="mt-6 pt-6 border-t border-slate-100 text-center">
             <p className="text-sm text-slate-400 font-medium">
-              Baru di sini?{" "}
+              belum punya akun?{" "}
               <button
-                type="button"
                 onClick={() => router.push("/register")}
-                className="text-indigo-600 hover:text-indigo-700 font-bold underline-offset-4 hover:underline"
+                className="text-indigo-600 hover:text-indigo-700 font-black underline-offset-4 hover:underline transition-colors"
               >
-                Buat Akun Gratis
+                daftar gratis ✨
               </button>
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        <p className="text-center text-[11px] text-slate-300 font-medium mt-6 tracking-wide">
+          jurnalmu aman & privat 🔒
+        </p>
+      </div>
     </div>
   );
 }
