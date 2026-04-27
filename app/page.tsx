@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
+<<<<<<< Updated upstream
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,6 +31,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { MoodCalendar } from "@/components/mood-calender";
+=======
+import { Sparkles, ArrowRight, Loader2, Menu, X } from "lucide-react";
+>>>>>>> Stashed changes
 
 export default function Home() {
   const [text, setText] = useState("");
@@ -37,6 +41,7 @@ export default function Home() {
   const [status, setStatus] = useState("Ready");
   const [journalId, setJournalId] = useState<string | null>(null);
 
+<<<<<<< Updated upstream
   const [searchQuery, setSearchQuery] = useState("");
   const [category, setCategory] = useState("Personal");
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -96,6 +101,164 @@ export default function Home() {
   };
 
   useEffect(() => {
+=======
+const positions: React.CSSProperties[] = [
+  { top: "5%", left: "3%" },
+  { top: "12%", left: "18%" },
+  { top: "3%", left: "38%" },
+  { top: "8%", right: "15%" },
+  { top: "5%", right: "3%" },
+  { top: "25%", left: "2%" },
+  { top: "30%", right: "4%" },
+  { top: "45%", left: "6%" },
+  { top: "50%", right: "2%" },
+  { top: "60%", left: "2%" },
+  { top: "65%", right: "6%" },
+  { top: "72%", left: "15%" },
+  { top: "75%", right: "14%" },
+  { top: "85%", left: "4%" },
+  { top: "88%", right: "3%" },
+  { top: "92%", left: "30%" },
+];
+
+const moodItems = [
+  {
+    emoji: "😊",
+    mood: "Senang",
+    color: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  },
+  {
+    emoji: "😭",
+    mood: "Sedih",
+    color: "bg-blue-100 text-blue-700 border-blue-200",
+  },
+  {
+    emoji: "😤",
+    mood: "Marah",
+    color: "bg-red-100 text-red-700 border-red-200",
+  },
+  {
+    emoji: "😰",
+    mood: "Cemas",
+    color: "bg-purple-100 text-purple-700 border-purple-200",
+  },
+  {
+    emoji: "😌",
+    mood: "Netral",
+    color: "bg-slate-100 text-slate-600 border-slate-200",
+  },
+  {
+    emoji: "🥰",
+    mood: "Senang",
+    color: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  },
+  {
+    emoji: "🥺",
+    mood: "Sedih",
+    color: "bg-blue-100 text-blue-700 border-blue-200",
+  },
+  {
+    emoji: "😮‍💨",
+    mood: "Netral",
+    color: "bg-slate-100 text-slate-600 border-slate-200",
+  },
+  {
+    emoji: "😊",
+    mood: "Senang",
+    color: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  },
+  {
+    emoji: "😭",
+    mood: "Sedih",
+    color: "bg-blue-100 text-blue-700 border-blue-200",
+  },
+  {
+    emoji: "😤",
+    mood: "Marah",
+    color: "bg-red-100 text-red-700 border-red-200",
+  },
+  {
+    emoji: "😰",
+    mood: "Cemas",
+    color: "bg-purple-100 text-purple-700 border-purple-200",
+  },
+  {
+    emoji: "😌",
+    mood: "Netral",
+    color: "bg-slate-100 text-slate-600 border-slate-200",
+  },
+  {
+    emoji: "🥰",
+    mood: "Senang",
+    color: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  },
+  {
+    emoji: "🥺",
+    mood: "Sedih",
+    color: "bg-blue-100 text-blue-700 border-blue-200",
+  },
+  {
+    emoji: "😮‍💨",
+    mood: "Netral",
+    color: "bg-slate-100 text-slate-600 border-slate-200",
+  },
+];
+
+const features = [
+  {
+    emoji: "✨",
+    title: "AI Tidy-up",
+    desc: "Rapikan typo & tulisanmu tanpa mengubah makna sedikitpun",
+    color: "bg-indigo-50 border-indigo-100",
+    textColor: "text-indigo-600",
+  },
+  {
+    emoji: "🎭",
+    title: "Mood Tracker",
+    desc: "AI otomatis deteksi suasana hatimu setiap kali nulis",
+    color: "bg-yellow-50 border-yellow-100",
+    textColor: "text-yellow-600",
+  },
+  {
+    emoji: "📅",
+    title: "Mood Calendar",
+    desc: "Lihat perjalanan mood harianmu dalam kalender warna-warni",
+    color: "bg-blue-50 border-blue-100",
+    textColor: "text-blue-600",
+  },
+  {
+    emoji: "🗂️",
+    title: "Kategori",
+    desc: "Organisir jurnalmu ke dalam Personal, Work, Ideas & Urgent",
+    color: "bg-emerald-50 border-emerald-100",
+    textColor: "text-emerald-600",
+  },
+  {
+    emoji: "☁️",
+    title: "Auto-save",
+    desc: "Tulisanmu tersimpan otomatis, ga perlu khawatir kehilangan",
+    color: "bg-purple-50 border-purple-100",
+    textColor: "text-purple-600",
+  },
+  {
+    emoji: "🔒",
+    title: "Privat & Aman",
+    desc: "Jurnalmu hanya bisa diakses oleh kamu sendiri",
+    color: "bg-rose-50 border-rose-100",
+    textColor: "text-rose-600",
+  },
+];
+
+export default function LandingPage() {
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    let cancelled = false;
+>>>>>>> Stashed changes
     const checkUser = async () => {
       const { data } = await supabase.auth.getUser();
       if (!data.user) {
@@ -106,6 +269,12 @@ export default function Home() {
       setCheckingAuth(false);
     };
     checkUser();
+<<<<<<< Updated upstream
+=======
+    return () => {
+      cancelled = true;
+    };
+>>>>>>> Stashed changes
   }, [router]);
 
   // --- FUNGSI DETEKSI MOOD (SMART & RESPONSIVE) ---
@@ -273,6 +442,7 @@ export default function Home() {
   if (checkingAuth) return null;
 
   return (
+<<<<<<< Updated upstream
     <div className="flex h-screen bg-white overflow-hidden antialiased text-[#444746]">
       {/* SIDEBAR */}
       <aside
@@ -282,6 +452,51 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
               <Sparkles className="h-5 w-5 text-white fill-white/20" />
+=======
+    <>
+      <style>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(var(--rotate)); }
+          50%       { transform: translateY(-10px) rotate(var(--rotate)); }
+        }
+        .emoji-float { animation: float 4s ease-in-out infinite; }
+        @keyframes marquee {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .marquee-track {
+          display: flex;
+          width: max-content;
+          animation: marquee 25s linear infinite;
+        }
+        .marquee-track:hover { animation-play-state: paused; }
+      `}</style>
+
+      <div className="min-h-screen w-full bg-white overflow-x-hidden relative">
+        {/* Background blobs */}
+        <div className="fixed top-[-80px] left-[-80px] w-[300px] md:w-[400px] h-[300px] md:h-[400px] bg-indigo-100 rounded-full blur-3xl opacity-50 pointer-events-none" />
+        <div className="fixed bottom-[-80px] right-[-80px] w-[300px] md:w-[400px] h-[300px] md:h-[400px] bg-[#C2E7FF] rounded-full blur-3xl opacity-40 pointer-events-none" />
+
+        {/* Floating emojis (Desktop Only) */}
+        {mounted &&
+          floatingEmojis.map((item, i) => (
+            <div
+              key={i}
+              className="fixed pointer-events-none select-none hidden lg:flex flex-col items-center gap-1 emoji-float"
+              style={
+                {
+                  ...positions[i],
+                  opacity: 0.28,
+                  "--rotate": `${item.rotate}deg`,
+                  animationDelay: `${(i * 0.4) % 4}s`,
+                } as React.CSSProperties
+              }
+            >
+              <span className={item.size}>{item.emoji}</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                {item.label}
+              </span>
+>>>>>>> Stashed changes
             </div>
             <span className="text-xl font-semibold tracking-tight text-[#1F1F1F]">
               Jourdy
@@ -297,6 +512,7 @@ export default function Home() {
           </Button>
         </div>
 
+<<<<<<< Updated upstream
         <div className="px-5 mb-6 shrink-0 space-y-3">
           <Button
             onClick={startNewEntry}
@@ -408,6 +624,15 @@ export default function Home() {
                     </button>
                   ))}
                 </div>
+=======
+        {/* NAVBAR - FIXED TOP */}
+        <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-md border-b border-slate-100">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            {/* LOGO */}
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-100 shrink-0">
+                <Sparkles className="h-4 w-4 text-white fill-white/20" />
+>>>>>>> Stashed changes
               </div>
             ))}
           </div>
@@ -447,6 +672,7 @@ export default function Home() {
                 {status}
               </span>
             </div>
+<<<<<<< Updated upstream
           </div>
 
           <Button
@@ -473,11 +699,116 @@ export default function Home() {
             <div className="mb-14">
               <div className="flex items-center gap-2 mb-4 text-indigo-500 font-bold text-[10px] uppercase tracking-[0.3em]">
                 <PenLine className="h-3 w-3" /> Digital Journal
+=======
+
+            {/* DESKTOP MENU */}
+            <div className="hidden md:flex items-center gap-3">
+              <button
+                onClick={() => router.push("/login")}
+                className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
+              >
+                Masuk
+              </button>
+              <button
+                onClick={() => router.push("/register")}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black rounded-xl shadow-md active:scale-95 transition-all"
+              >
+                Daftar Gratis
+              </button>
+            </div>
+
+            {/* MOBILE MENU TOGGLE */}
+            <div className="md:hidden">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
+          </div>
+
+          {/* MOBILE DROPDOWN */}
+          {isMenuOpen && (
+            <div className="md:hidden absolute top-[64px] left-0 w-full bg-white border-b border-slate-100 p-4 space-y-3 shadow-xl animate-in slide-in-from-top duration-200">
+              <button
+                onClick={() => {
+                  router.push("/login");
+                  setIsMenuOpen(false);
+                }}
+                className="w-full py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-xl text-center"
+              >
+                Masuk ke Akun
+              </button>
+              <button
+                onClick={() => {
+                  router.push("/register");
+                  setIsMenuOpen(false);
+                }}
+                className="w-full py-4 bg-indigo-600 text-white text-sm font-black rounded-xl text-center shadow-md shadow-indigo-100"
+              >
+                Daftar Gratis Sekarang
+              </button>
+            </div>
+          )}
+        </nav>
+
+        {/* HERO SECTION - Ditambah padding top (pt-32) agar tidak tertutup Navbar Fixed */}
+        <section className="max-w-5xl mx-auto px-6 pt-32 md:pt-40 pb-16 md:pb-20 text-center relative z-10">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-full text-indigo-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-6 md:mb-8">
+            <Sparkles className="h-3 w-3" /> AI-powered journal
+          </div>
+
+          <h1 className="text-4xl md:text-7xl font-black tracking-tight text-[#1F1F1F] leading-[1.1] md:leading-[1.05] mb-6">
+            Tulis perasaanmu,
+            <br />
+            <span className="text-indigo-600">biarkan AI</span> yang
+            <br />
+            bantu sisanya.
+          </h1>
+
+          <p className="text-slate-400 text-base md:text-xl font-medium max-w-xl mx-auto mb-10 leading-relaxed">
+            Jurnal harian yang ngerti kamu — deteksi mood otomatis, rapikan
+            tulisan, dan simpan semua cerita harianmu secara privat.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={() => router.push("/register")}
+              className="w-full sm:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 active:scale-95 transition-all flex items-center justify-center gap-2 text-base"
+            >
+              Mulai Nulis Gratis <ArrowRight className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => router.push("/login")}
+              className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-slate-50 text-slate-600 font-black rounded-2xl border border-slate-200 active:scale-95 transition-all text-base"
+            >
+              Sudah punya akun
+            </button>
+          </div>
+
+          <p className="text-slate-300 text-[10px] md:text-xs font-medium mt-6 tracking-wide">
+            gratis selamanya · tanpa kartu kredit · privat & aman 🔒
+          </p>
+        </section>
+
+        {/* MARQUEE */}
+        <section className="py-6 md:py-8 bg-slate-50 border-y border-slate-100 overflow-hidden">
+          <div className="marquee-track">
+            {moodItems.map((item, i) => (
+              <div
+                key={i}
+                className={`flex items-center gap-2 px-4 py-2 mx-2 rounded-full border text-[10px] md:text-xs font-black uppercase tracking-widest flex-shrink-0 ${item.color}`}
+              >
+                <span>{item.emoji}</span>
+                <span>Mood: {item.mood}</span>
+>>>>>>> Stashed changes
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-[#1F1F1F] tracking-tight leading-tight mb-6">
                 {journalId ? "Edit ceritamu." : "Mau cerita apa hari ini?"}
               </h1>
 
+<<<<<<< Updated upstream
               <div className="flex flex-wrap items-center gap-3">
                 <p className="text-slate-400 text-sm font-medium italic">
                   {new Date().toLocaleDateString("id-ID", {
@@ -485,9 +816,38 @@ export default function Home() {
                     day: "numeric",
                     month: "long",
                   })}
+=======
+        {/* FEATURES GRID */}
+        <section className="max-w-5xl mx-auto px-6 py-20 md:py-24 relative z-10">
+          <div className="text-center mb-10 md:mb-14">
+            <p className="text-indigo-500 font-black text-[10px] md:text-[11px] uppercase tracking-[0.3em] mb-3">
+              Fitur
+            </p>
+            <h2 className="text-2xl md:text-4xl font-black tracking-tight text-[#1F1F1F]">
+              Semua yang kamu butuhkan
+              <br className="hidden md:block" /> untuk nulis jurnal 📓
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {features.map((f, i) => (
+              <div
+                key={i}
+                className={`p-6 rounded-[1.5rem] border ${f.color} transition-all hover:shadow-md`}
+              >
+                <div className="text-3xl mb-3">{f.emoji}</div>
+                <h3
+                  className={`text-xs md:text-sm font-black uppercase tracking-tight mb-1.5 ${f.textColor}`}
+                >
+                  {f.title}
+                </h3>
+                <p className="text-slate-500 text-sm font-medium leading-relaxed">
+                  {f.desc}
+>>>>>>> Stashed changes
                 </p>
                 <span className="text-slate-200 hidden md:inline">|</span>
 
+<<<<<<< Updated upstream
                 <div className="relative" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => setIsCategoryOpen(!isCategoryOpen)}
@@ -519,8 +879,61 @@ export default function Home() {
                       ))}
                     </div>
                   )}
+=======
+        {/* STEPS */}
+        <section className="bg-slate-50 border-y border-slate-100 py-20 md:py-24 relative z-10">
+          <div className="max-w-5xl mx-auto px-6">
+            <div className="text-center mb-10 md:mb-14">
+              <p className="text-indigo-500 font-black text-[10px] md:text-[11px] uppercase tracking-[0.3em] mb-3">
+                Cara Kerja
+              </p>
+              <h2 className="text-2xl md:text-4xl font-black tracking-tight text-[#1F1F1F]">
+                Semudah nulis di notes hp 📱
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+              {[
+                {
+                  step: "01",
+                  emoji: "✍️",
+                  title: "Tulis bebas",
+                  desc: "Ketik apa aja yang kamu rasain hari ini — ga perlu rapi, ga perlu panjang.",
+                },
+                {
+                  step: "02",
+                  emoji: "🤖",
+                  title: "AI bekerja",
+                  desc: "Mood kamu otomatis terdeteksi & tulisan bisa dirapikan dengan 1 klik.",
+                },
+                {
+                  step: "03",
+                  emoji: "📅",
+                  title: "Lihat perjalanan",
+                  desc: "Buka Mood Calendar dan lihat bagaimana perasaanmu berubah setiap hari.",
+                },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-[1.5rem] border border-slate-100 p-6 md:p-8 shadow-sm"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-[10px] md:text-[11px] font-black text-slate-300 tracking-widest">
+                      {item.step}
+                    </span>
+                    <div className="h-px flex-1 bg-slate-100" />
+                  </div>
+                  <div className="text-3xl md:text-4xl mb-4">{item.emoji}</div>
+                  <h3 className="text-base font-black text-[#1F1F1F] mb-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-slate-400 text-sm font-medium leading-relaxed">
+                    {item.desc}
+                  </p>
+>>>>>>> Stashed changes
                 </div>
 
+<<<<<<< Updated upstream
                 <div
                   className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all duration-500 ${
                     mood === "Senang"
@@ -541,8 +954,41 @@ export default function Home() {
                   )}
                   {isAnalyzingMood ? "Analyzing..." : `Mood: ${mood}`}
                 </div>
+=======
+        {/* CTA */}
+        <section className="max-w-5xl mx-auto px-4 md:px-6 py-20 md:py-24 text-center relative z-10">
+          <div className="bg-indigo-600 rounded-[2rem] md:rounded-[2.5rem] p-10 md:p-16 shadow-2xl shadow-indigo-100 relative overflow-hidden">
+            <div className="relative z-10">
+              <p className="text-indigo-200 text-3xl md:text-4xl mb-4">📓</p>
+              <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight mb-4 leading-tight">
+                Mulai cerita harimu
+                <br />
+                sekarang, yuk!
+              </h2>
+              <p className="text-indigo-200 text-sm md:text-base font-medium mb-8 max-w-md mx-auto">
+                Gratis selamanya. Tidak butuh kartu kredit. Mulai dalam 30
+                detik.
+              </p>
+              <button
+                onClick={() => router.push("/register")}
+                className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-slate-50 text-indigo-600 font-black rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 mx-auto text-base"
+              >
+                Buat Akun Gratis <ArrowRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* FOOTER */}
+        <footer className="border-t border-slate-100 py-8 relative z-10 bg-white">
+          <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="h-6 w-6 bg-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
+                <Sparkles className="h-3 w-3 text-white fill-white/20" />
+>>>>>>> Stashed changes
               </div>
             </div>
+<<<<<<< Updated upstream
 
             <Textarea
               id="journal-input"
@@ -551,6 +997,11 @@ export default function Home() {
               placeholder="Ketik ceritamu di sini..."
               className="w-full border-none focus-visible:ring-0 text-xl md:text-2xl p-0 bg-transparent resize-none min-h-[500px] leading-[1.8] text-[#1F1F1F] placeholder:text-[#C4C7C5] font-medium"
             />
+=======
+            <p className="text-[10px] md:text-xs text-slate-400 font-medium text-center">
+              dibuat dengan 💙 untuk mencurahkan isi hatimu
+            </p>
+>>>>>>> Stashed changes
           </div>
         </div>
 

@@ -1,139 +1,220 @@
 "use client";
-import * as React from "react";
-import { Calendar } from "@/components/ui/calendar";
-import { Loader2 } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 
-const moodColors: { [key: string]: string } = {
-  Senang: "bg-yellow-400",
-  Sedih: "bg-blue-400",
-  Marah: "bg-red-400",
-  Cemas: "bg-purple-400",
-  Netral: "bg-slate-300",
-};
+import React, { useState, useEffect } from "react";
+import {
+  format,
+  addMonths,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  isSameMonth,
+  isSameDay,
+  addDays,
+  isToday,
+} from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { getMoodConfig } from "./dashboard/config";
 
-const moodTextColors: { [key: string]: string } = {
-  Senang: "bg-yellow-400 text-yellow-900 hover:bg-yellow-500",
-  Sedih: "bg-blue-400 text-white hover:bg-blue-500",
-  Marah: "bg-red-400 text-white hover:bg-red-500",
-  Cemas: "bg-purple-400 text-white hover:bg-purple-500",
-  Netral: "bg-slate-200 text-slate-700 hover:bg-slate-300",
-};
+const MOOD_LEGEND = [
+  { label: "Senang", dot: "bg-yellow-400" },
+  { label: "Sedih", dot: "bg-blue-400" },
+  { label: "Marah", dot: "bg-red-400" },
+  { label: "Cemas", dot: "bg-purple-400" },
+  { label: "Netral", dot: "bg-slate-300" },
+];
 
 export function MoodCalendar() {
-  // Data sekarang berupa { "2026-04-22": ["Senang", "Sedih"] }
-  const [moodData, setMoodData] = React.useState<{ [key: string]: string[] }>(
-    {},
-  );
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [journals, setJournals] = useState<any[]>([]);
 
-  React.useEffect(() => {
-    async function fetchMoods() {
+  useEffect(() => {
+    const fetchJournals = async () => {
       try {
-        const res = await fetch("/api/journal/mood-stats");
-        if (!res.ok) throw new Error("Failed to fetch");
+        const res = await fetch("/api/journal", {
+          headers: { "Cache-Control": "no-cache" },
+        });
+        if (!res.ok) return;
         const data = await res.json();
-        setMoodData(data);
+        if (Array.isArray(data)) setJournals(data);
       } catch (err) {
-        console.error("Gagal mengambil statistik mood:", err);
-      } finally {
-        setIsLoading(false);
+        console.error("MoodCalendar: gagal fetch jurnal", err);
       }
-    }
-    fetchMoods();
+    };
+
+    fetchJournals();
+
+    const handleUpdate = () => fetchJournals();
+    window.addEventListener("journalUpdated", handleUpdate);
+    return () => window.removeEventListener("journalUpdated", handleUpdate);
   }, []);
 
-  if (isLoading) {
+  const getMoodsForDate = (date: Date) => {
+    if (!journals.length) return [];
+
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      journals
+        .filter((j: any) => {
+          const raw = j.created_at ?? j.createdAt;
+          if (!raw) return false;
+          return isSameDay(new Date(raw), date);
+        })
+        .sort(
+          (a: any, b: any) =>
+            new Date(a.created_at ?? a.createdAt).getTime() -
+            new Date(b.created_at ?? b.createdAt).getTime(),
+        )
+        // FIX: deduplikasi mood yang sama — 1 mood = 1 dot
+        .map((j: any) => ({ mood: j.mood, config: getMoodConfig(j.mood) }))
+        .filter((item) => item.config)
+        .filter(
+          (item, index, arr) =>
+            arr.findIndex((x) => x.mood === item.mood) === index,
+        )
+        .map((item) => item.config)
+    );
+  };
+
+  const renderHeader = () => (
+    <div className="flex items-center justify-between mb-6 px-2">
+      <div className="flex flex-col">
+        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500 mb-1">
+          Mood History
+        </span>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">
+          {format(currentMonth, "MMMM yyyy")}
+        </h2>
+      </div>
+      <div className="flex gap-1 bg-slate-100/50 p-1 rounded-xl border border-slate-100">
+        <button
+          type="button"
+          onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+          className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-500"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+          className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-500"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderDays = () => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return (
+      <div className="grid grid-cols-7 mb-3">
+        {days.map((day) => (
+          <div
+            key={day}
+            className="text-center text-[9px] font-black uppercase tracking-widest text-slate-400"
+          >
+            {day}
+          </div>
+        ))}
       </div>
     );
-  }
+  };
 
-  return (
-    <div className="flex flex-col items-center">
-      <Calendar
-        mode="single"
-        className="rounded-3xl border shadow-sm bg-white p-4"
-        components={{
-          Day: ({ day, modifiers }) => {
-            const date = day.date;
-            const dateStr = format(date, "yyyy-MM-dd");
-            const moods = moodData[dateStr] || [];
-            const hasMood = moods.length > 0;
+  const renderCells = () => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(monthStart);
+    const startDate = startOfWeek(monthStart);
+    const endDate = endOfWeek(monthEnd);
 
-            // Kalau hanya 1 mood, pakai background penuh seperti sebelumnya
-            // Kalau lebih dari 1, background putih + dot-dot di bawah
-            const singleMoodClass =
-              hasMood && moods.length === 1 ? moodTextColors[moods[0]] : "";
+    const rows = [];
+    let days = [];
+    let day = startDate;
 
-            if (modifiers.outside) {
-              return <td className="h-9 w-9 p-0" aria-hidden="true" />;
-            }
+    while (day <= endDate) {
+      for (let i = 0; i < 7; i++) {
+        const formattedDate = format(day, "d");
+        const cloneDay = new Date(day);
+        const moods = getMoodsForDate(cloneDay);
+        const activeToday = isToday(cloneDay);
+        const isCurrentMonth = isSameMonth(day, monthStart);
 
-            return (
-              <td className="p-0 relative" role="presentation">
-                <div
-                  className={cn(
-                    "relative flex flex-col h-9 w-9 items-center justify-center rounded-xl text-sm transition-all cursor-default font-medium",
-                    moods.length === 1
-                      ? singleMoodClass
-                      : hasMood
-                        ? "bg-slate-50 text-slate-700"
-                        : "hover:bg-slate-50 text-slate-400",
-                    modifiers.today &&
-                      !hasMood &&
-                      "ring-2 ring-indigo-500 ring-offset-1",
-                    modifiers.today &&
-                      hasMood &&
-                      moods.length === 1 &&
-                      "ring-2 ring-offset-1 ring-white/50",
-                  )}
-                >
-                  {/* Tanggal */}
-                  <span className={cn(moods.length > 1 ? "-mt-1 text-xs" : "")}>
-                    {date.getDate()}
-                  </span>
+        days.push(
+          <div
+            key={day.toString()}
+            className="relative aspect-square flex flex-col items-center justify-center"
+          >
+            {activeToday && isCurrentMonth && (
+              <div className="absolute inset-0 rounded-xl bg-indigo-50 border border-indigo-100" />
+            )}
 
-                  {/* Dots untuk multiple mood */}
-                  {moods.length > 1 && (
-                    <div className="flex items-center gap-0.5 mt-0.5">
-                      {moods.slice(0, 4).map((m) => (
-                        <div
-                          key={m}
-                          className={cn(
-                            "h-1.5 w-1.5 rounded-full",
-                            moodColors[m] || "bg-slate-300",
-                          )}
-                        />
-                      ))}
-                    </div>
-                  )}
+            <span
+              className={`relative z-10 text-sm font-bold tracking-tight leading-none ${
+                !isCurrentMonth
+                  ? "text-slate-200"
+                  : activeToday
+                    ? "text-indigo-600"
+                    : "text-slate-600"
+              }`}
+            >
+              {formattedDate}
+            </span>
 
-                  {/* Dot today indicator untuk single mood */}
-                  {modifiers.today && moods.length === 1 && (
-                    <div className="absolute bottom-1 h-1 w-1 bg-white rounded-full" />
-                  )}
-                </div>
-              </td>
-            );
-          },
-        }}
-      />
+            {moods.length > 0 && isCurrentMonth && (
+              <div className="relative z-10 flex gap-1 md:gap-0.5 mt-1.5 justify-center flex-wrap">
+                {moods.slice(0, 4).map((m, idx) => (
+                  <div
+                    key={idx}
+                    className={`h-2 w-2 md:h-2.5 md:w-2.5 rounded-full shadow-sm ${m.dot}`}
+                  />
+                ))}
+              </div>
+            )}
 
-      {/* Legend */}
-      <div className="mt-8 grid grid-cols-3 gap-x-4 gap-y-3 w-full max-w-[300px]">
-        {Object.entries(moodColors).map(([name, color]) => (
-          <div key={name} className="flex items-center gap-2">
-            <div className={cn("h-3 w-3 rounded-full shadow-sm", color)} />
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
-              {name}
+            {activeToday && isCurrentMonth && (
+              <div className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-indigo-500 z-10" />
+            )}
+          </div>,
+        );
+        day = addDays(day, 1);
+      }
+
+      rows.push(
+        <div className="grid grid-cols-7 gap-1 mb-1" key={day.toString()}>
+          {days}
+        </div>,
+      );
+      days = [];
+    }
+    return <div>{rows}</div>;
+  };
+
+  const renderLegend = () => (
+    <div className="mt-5 pt-4 border-t border-slate-100">
+      <p className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">
+        Keterangan
+      </p>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+        {MOOD_LEGEND.map((item) => (
+          <div key={item.label} className="flex items-center gap-2">
+            <div
+              className={`h-3 w-3 rounded-full shrink-0 shadow-sm ${item.dot}`}
+            />
+            <span className="text-xs font-bold text-slate-500">
+              {item.label}
             </span>
           </div>
         ))}
       </div>
+    </div>
+  );
+
+  return (
+    <div className="w-full select-none">
+      {renderHeader()}
+      {renderDays()}
+      {renderCells()}
+      {renderLegend()}
     </div>
   );
 }
