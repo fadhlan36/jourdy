@@ -16,7 +16,9 @@ export async function GET() {
         }
     );
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { data, error } = await supabase
@@ -44,23 +46,45 @@ export async function POST(req: Request) {
     );
 
     try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        // 1. Ambil user session dengan benar
+        const {
+            data: { user },
+            error: authError,
+        } = await supabase.auth.getUser();
 
+        if (authError || !user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // 2. Parse body request
         const body = await req.json();
+
+        // 3. Lakukan Insert ke tabel 'journals'
         const { data, error } = await supabase
             .from("journals")
-            .insert([{
-                content: body.content,
-                category: body.category || "Personal",
-                mood: body.mood || "Netral",
-                user_id: user.id
-            }])
-            .select().single();
+            .insert([
+                {
+                    content: body.content,
+                    category: body.category || "Personal",
+                    mood: body.mood || "Netral",
+                    user_id: user.id, // Pastikan kolom di DB adalah user_id
+                },
+            ])
+            .select() // Penting agar mengembalikan data yang baru dibuat
+            .single();
 
-        if (error) throw error;
+        // 4. Cek jika ada error dari Supabase (RLS atau Skema)
+        if (error) {
+            console.error("Supabase Error:", error.message);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
         return NextResponse.json(data);
     } catch (err: any) {
-        return NextResponse.json({ error: "Gagal simpan" }, { status: 500 });
+        console.error("API Route Error:", err);
+        return NextResponse.json(
+            { error: "Internal Server Error" },
+            { status: 500 }
+        );
     }
 }

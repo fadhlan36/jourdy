@@ -159,7 +159,7 @@ export function MoodCalendar() {
 
             {moods.length > 0 && isCurrentMonth && (
               <div className="relative z-10 flex gap-0.5 mt-1 justify-center flex-wrap px-0.5">
-                {moods.slice(0, 3).map((m, idx) => (
+                {moods.slice(0, 4).map((m, idx) => (
                   <div
                     key={idx}
                     className={`h-1.5 w-1.5 rounded-full shadow-sm ${m.dot}`}
