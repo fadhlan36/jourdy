@@ -53,66 +53,63 @@ export function MoodCalendar() {
   const getMoodsForDate = (date: Date) => {
     if (!journals.length) return [];
 
-    return (
-      journals
-        .filter((j: any) => {
-          const raw = j.created_at ?? j.createdAt;
-          if (!raw) return false;
-          return isSameDay(new Date(raw), date);
-        })
-        .sort(
-          (a: any, b: any) =>
-            new Date(a.created_at ?? a.createdAt).getTime() -
-            new Date(b.created_at ?? b.createdAt).getTime(),
-        )
-        // FIX: deduplikasi mood yang sama — 1 mood = 1 dot
-        .map((j: any) => ({ mood: j.mood, config: getMoodConfig(j.mood) }))
-        .filter((item) => item.config)
-        .filter(
-          (item, index, arr) =>
-            arr.findIndex((x) => x.mood === item.mood) === index,
-        )
-        .map((item) => item.config)
-    );
+    return journals
+      .filter((j: any) => {
+        const raw = j.created_at ?? j.createdAt;
+        if (!raw) return false;
+        return isSameDay(new Date(raw), date);
+      })
+      .sort(
+        (a: any, b: any) =>
+          new Date(a.created_at ?? a.createdAt).getTime() -
+          new Date(b.created_at ?? b.createdAt).getTime(),
+      )
+      .map((j: any) => ({ mood: j.mood, config: getMoodConfig(j.mood) }))
+      .filter((item) => item.config)
+      .filter(
+        (item, index, arr) =>
+          arr.findIndex((x) => x.mood === item.mood) === index,
+      )
+      .map((item) => item.config);
   };
 
   const renderHeader = () => (
-    <div className="flex items-center justify-between mb-6 px-2">
+    <div className="flex items-center justify-between mb-4 px-1">
       <div className="flex flex-col">
-        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500 mb-1">
+        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-indigo-500 mb-0.5">
           Mood History
         </span>
-        <h2 className="text-xl font-black text-slate-900 tracking-tight">
+        <h2 className="text-base font-black text-slate-900 tracking-tight leading-tight">
           {format(currentMonth, "MMMM yyyy")}
         </h2>
       </div>
-      <div className="flex gap-1 bg-slate-100/50 p-1 rounded-xl border border-slate-100">
+      <div className="flex gap-0.5 bg-slate-100/50 p-0.5 rounded-lg border border-slate-100">
         <button
           type="button"
           onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-          className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-500"
+          className="p-1 hover:bg-white hover:shadow-sm rounded-md transition-all text-slate-500"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={14} />
         </button>
         <button
           type="button"
           onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-          className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-500"
+          className="p-1 hover:bg-white hover:shadow-sm rounded-md transition-all text-slate-500"
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={14} />
         </button>
       </div>
     </div>
   );
 
   const renderDays = () => {
-    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const days = ["S", "M", "T", "W", "T", "F", "S"];
     return (
-      <div className="grid grid-cols-7 mb-3">
-        {days.map((day) => (
+      <div className="grid grid-cols-7 mb-2">
+        {days.map((day, idx) => (
           <div
-            key={day}
-            className="text-center text-[9px] font-black uppercase tracking-widest text-slate-400"
+            key={idx}
+            className="text-center text-[8px] font-black uppercase tracking-widest text-slate-400"
           >
             {day}
           </div>
@@ -142,14 +139,14 @@ export function MoodCalendar() {
         days.push(
           <div
             key={day.toString()}
-            className="relative aspect-square flex flex-col items-center justify-center"
+            className="relative aspect-square flex flex-col items-center justify-center py-1"
           >
             {activeToday && isCurrentMonth && (
-              <div className="absolute inset-0 rounded-xl bg-indigo-50 border border-indigo-100" />
+              <div className="absolute inset-[1px] rounded-lg bg-indigo-50 border border-indigo-100" />
             )}
 
             <span
-              className={`relative z-10 text-sm font-bold tracking-tight leading-none ${
+              className={`relative z-10 text-[11px] font-bold tracking-tight leading-none ${
                 !isCurrentMonth
                   ? "text-slate-200"
                   : activeToday
@@ -161,18 +158,18 @@ export function MoodCalendar() {
             </span>
 
             {moods.length > 0 && isCurrentMonth && (
-              <div className="relative z-10 flex gap-1 md:gap-0.5 mt-1.5 justify-center flex-wrap">
-                {moods.slice(0, 4).map((m, idx) => (
+              <div className="relative z-10 flex gap-0.5 mt-1 justify-center flex-wrap px-0.5">
+                {moods.slice(0, 3).map((m, idx) => (
                   <div
                     key={idx}
-                    className={`h-2 w-2 md:h-2.5 md:w-2.5 rounded-full shadow-sm ${m.dot}`}
+                    className={`h-1.5 w-1.5 rounded-full shadow-sm ${m.dot}`}
                   />
                 ))}
               </div>
             )}
 
             {activeToday && isCurrentMonth && (
-              <div className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-indigo-500 z-10" />
+              <div className="absolute top-1 right-1 h-1 w-1 rounded-full bg-indigo-500 z-10" />
             )}
           </div>,
         );
@@ -180,7 +177,7 @@ export function MoodCalendar() {
       }
 
       rows.push(
-        <div className="grid grid-cols-7 gap-1 mb-1" key={day.toString()}>
+        <div className="grid grid-cols-7 gap-0.5" key={day.toString()}>
           {days}
         </div>,
       );
@@ -190,17 +187,17 @@ export function MoodCalendar() {
   };
 
   const renderLegend = () => (
-    <div className="mt-5 pt-4 border-t border-slate-100">
-      <p className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">
+    <div className="mt-4 pt-3 border-t border-slate-100">
+      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-2">
         Keterangan
       </p>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+      <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
         {MOOD_LEGEND.map((item) => (
-          <div key={item.label} className="flex items-center gap-2">
+          <div key={item.label} className="flex items-center gap-1.5">
             <div
-              className={`h-3 w-3 rounded-full shrink-0 shadow-sm ${item.dot}`}
+              className={`h-2 w-2 rounded-full shrink-0 shadow-sm ${item.dot}`}
             />
-            <span className="text-xs font-bold text-slate-500">
+            <span className="text-[10px] font-bold text-slate-500">
               {item.label}
             </span>
           </div>
@@ -210,7 +207,7 @@ export function MoodCalendar() {
   );
 
   return (
-    <div className="w-full select-none">
+    <div className="w-full select-none max-w-[280px] mx-auto">
       {renderHeader()}
       {renderDays()}
       {renderCells()}
