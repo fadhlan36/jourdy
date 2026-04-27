@@ -273,22 +273,24 @@ export default function LandingPage() {
 
         {/* ── NAVBAR ────────────────────────────────────────── */}
         <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
-          <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-100">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            {/* Logo Section */}
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <div className="h-8 w-8 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-100 shrink-0">
                 <Sparkles className="h-4 w-4 text-white fill-white/20" />
               </div>
               <span className="text-lg font-black tracking-tight text-[#1F1F1F]">
                 Jourdy
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              {/* FIX: tambah type="button" & aria-label */}
+
+            {/* Buttons Section */}
+            <div className="flex items-center gap-1.5 sm:gap-3">
               <button
                 type="button"
                 aria-label="Masuk ke akun"
                 onClick={() => router.push("/login")}
-                className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
+                className="px-3 sm:px-4 py-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
               >
                 Masuk
               </button>
@@ -296,9 +298,10 @@ export default function LandingPage() {
                 type="button"
                 aria-label="Daftar akun gratis"
                 onClick={() => router.push("/register")}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black rounded-xl shadow-md shadow-indigo-100 active:scale-95 transition-all"
+                className="px-4 py-2 sm:px-5 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-black rounded-xl shadow-md shadow-indigo-100 active:scale-95 transition-all whitespace-nowrap"
               >
-                Daftar Gratis
+                <span className="hidden xs:inline">Daftar Gratis</span>
+                <span className="xs:hidden">Daftar</span>
               </button>
             </div>
           </div>
