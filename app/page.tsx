@@ -42,7 +42,7 @@ const positions: React.CSSProperties[] = [
   { top: "92%", left: "30%" },
 ];
 
-const moodItems = [
+const moodItemsBase = [
   {
     emoji: "😊",
     mood: "Senang",
@@ -83,27 +83,10 @@ const moodItems = [
     mood: "Netral",
     color: "bg-slate-100 text-slate-600 border-slate-200",
   },
-  {
-    emoji: "😊",
-    mood: "Senang",
-    color: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  },
-  {
-    emoji: "😭",
-    mood: "Sedih",
-    color: "bg-blue-100 text-blue-700 border-blue-200",
-  },
-  {
-    emoji: "😤",
-    mood: "Marah",
-    color: "bg-red-100 text-red-700 border-red-200",
-  },
-  {
-    emoji: "😰",
-    mood: "Cemas",
-    color: "bg-purple-100 text-purple-700 border-purple-200",
-  },
 ];
+
+// Duplikat 2x untuk logic translateX(-50%)
+const moodItems = [...moodItemsBase, ...moodItemsBase];
 
 const features = [
   {
@@ -150,6 +133,48 @@ const features = [
   },
 ];
 
+const steps = [
+  {
+    step: "01",
+    emoji: "✍️",
+    title: "Tulis bebas",
+    desc: "Ketik apa aja yang kamu rasain — ga perlu rapi, ga perlu panjang.",
+  },
+  {
+    step: "02",
+    emoji: "🤖",
+    title: "AI bekerja",
+    desc: "Mood otomatis terdeteksi & tulisan bisa dirapikan dengan 1 klik.",
+  },
+  {
+    step: "03",
+    emoji: "📅",
+    title: "Lihat perjalananmu",
+    desc: "Buka Mood Calendar dan lihat bagaimana perasaanmu berubah setiap hari.",
+  },
+];
+
+const testimonials = [
+  {
+    name: "Alya R.",
+    role: "Mahasiswi",
+    text: "Akhirnya ada jurnal yang ngerti aku. Setiap hari nulis jadi kayak ngobrol sama teman.",
+    emoji: "🥰",
+  },
+  {
+    name: "Bima S.",
+    role: "Remote Worker",
+    text: "Weekly insight-nya beneran ngena. Ternyata aku lebih sering cemas di hari Senin 😅",
+    emoji: "😮‍💨",
+  },
+  {
+    name: "Cinta D.",
+    role: "Guru",
+    text: "Fitur AI Tidy-up keren banget. Tulisan berantakanku jadi rapi tanpa kehilangan feel-nya.",
+    emoji: "✨",
+  },
+];
+
 export default function LandingPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -158,22 +183,17 @@ export default function LandingPage() {
 
   useEffect(() => {
     setMounted(true);
-    let cancelled = false;
-
     const checkUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (cancelled) return;
-      if (data.user) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
         router.push("/dashboard");
       } else {
         setCheckingAuth(false);
       }
     };
-
     checkUser();
-    return () => {
-      cancelled = true;
-    };
   }, [router]);
 
   if (checkingAuth) {
@@ -189,116 +209,120 @@ export default function LandingPage() {
       <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0px) rotate(var(--rotate)); }
-          50%       { transform: translateY(-10px) rotate(var(--rotate)); }
+          50% { transform: translateY(-12px) rotate(var(--rotate)); }
         }
         .emoji-float { animation: float 4s ease-in-out infinite; }
 
         @keyframes marquee {
-          0%   { transform: translateX(0); }
+          0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
         .marquee-track {
           display: flex;
           width: max-content;
-          animation: marquee 20s linear infinite;
+          animation: marquee 30s linear infinite;
+          will-change: transform;
         }
         .marquee-track:hover { animation-play-state: paused; }
+
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+        .gradient-text {
+          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        .hero-glow {
+          background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99,102,241,0.12) 0%, transparent 70%);
+        }
+        .card-hover {
+          transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 20px 40px -12px rgba(0,0,0,0.08);
+        }
       `}</style>
 
       <div className="min-h-screen w-full bg-white overflow-x-hidden relative">
-        {/* Background blobs */}
-        <div className="fixed top-[-80px] left-[-80px] w-[400px] h-[400px] bg-indigo-100 rounded-full blur-3xl opacity-50 pointer-events-none" />
-        <div className="fixed bottom-[-80px] right-[-80px] w-[400px] h-[400px] bg-[#C2E7FF] rounded-full blur-3xl opacity-40 pointer-events-none" />
+        {/* Background Blobs */}
+        <div className="fixed top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-50 rounded-full blur-[120px] opacity-60 pointer-events-none" />
+        <div className="fixed bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-cyan-50 rounded-full blur-[100px] opacity-50 pointer-events-none" />
 
-        {/* Floating emojis */}
+        {/* Floating Emojis (Desktop Only) */}
         {mounted &&
           floatingEmojis.map((item, i) => (
             <div
               key={i}
-              aria-hidden="true"
-              className="fixed pointer-events-none select-none hidden lg:flex flex-col items-center gap-1 emoji-float"
+              className="fixed pointer-events-none select-none hidden lg:flex flex-col items-center gap-1 emoji-float opacity-20"
               style={
                 {
                   ...positions[i],
-                  opacity: 0.28,
                   "--rotate": `${item.rotate}deg`,
-                  animationDelay: `${(i * 0.4) % 4}s`,
-                } as React.CSSProperties
+                  animationDelay: `${i * 0.4}s`,
+                } as any
               }
             >
               <span className={item.size}>{item.emoji}</span>
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">
                 {item.label}
               </span>
             </div>
           ))}
 
-        {/* ── NAVBAR ────────────────────────────────────────── */}
-        <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
-          <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-100">
-                <Sparkles className="h-4 w-4 text-white fill-white/20" />
+        {/* Navbar */}
+        <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100">
+          <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div
+              className="flex items-center gap-2.5 group cursor-pointer"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            >
+              <div className="h-9 w-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-110 transition-transform">
+                <Sparkles className="h-5 w-5 text-white" />
               </div>
-              <span className="text-lg font-black tracking-tight text-[#1F1F1F]">
+              <span className="text-xl font-black tracking-tight text-slate-900">
                 Jourdy
               </span>
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-4">
               <button
-                type="button"
                 onClick={() => router.push("/login")}
                 className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
               >
                 Masuk
               </button>
               <button
-                type="button"
                 onClick={() => router.push("/register")}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black rounded-xl shadow-md shadow-indigo-100 active:scale-95 transition-all"
+                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black rounded-xl shadow-lg shadow-indigo-100 active:scale-95 transition-all"
               >
                 Daftar Gratis
               </button>
             </div>
 
-            {/* Mobile Burger Toggle */}
-            <div className="md:hidden">
-              <button
-                type="button"
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
-              >
-                {isMenuOpen ? (
-                  <X className="h-6 w-6" />
-                ) : (
-                  <Menu className="h-6 w-6" />
-                )}
-              </button>
-            </div>
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="md:hidden p-2 text-slate-600"
+            >
+              {isMenuOpen ? <X /> : <Menu />}
+            </button>
           </div>
 
-          {/* Mobile Menu Dropdown */}
           {isMenuOpen && (
-            <div className="md:hidden absolute top-[65px] left-0 w-full bg-white border-b border-slate-100 p-6 flex flex-col gap-3 shadow-xl animate-in slide-in-from-top-5 duration-200">
+            <div className="md:hidden p-4 bg-white border-b border-slate-100 flex flex-col gap-3 animate-in slide-in-from-top-2">
               <button
-                type="button"
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  router.push("/login");
-                }}
-                className="w-full py-4 text-center text-sm font-bold text-slate-500 bg-slate-50 rounded-2xl"
+                onClick={() => router.push("/login")}
+                className="w-full py-3 text-sm font-bold text-slate-600 bg-slate-50 rounded-xl"
               >
                 Masuk
               </button>
               <button
-                type="button"
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  router.push("/register");
-                }}
-                className="w-full py-4 text-center bg-indigo-600 text-white text-sm font-black rounded-2xl shadow-lg shadow-indigo-100"
+                onClick={() => router.push("/register")}
+                className="w-full py-3 bg-indigo-600 text-white text-sm font-black rounded-xl"
               >
                 Daftar Gratis
               </button>
@@ -306,87 +330,84 @@ export default function LandingPage() {
           )}
         </nav>
 
-        {/* ── HERO ──────────────────────────────────────────── */}
-        <section className="max-w-5xl mx-auto px-6 pt-16 md:pt-24 pb-20 text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-full text-indigo-600 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-8">
-            <Sparkles className="h-3 w-3" /> AI-powered journal
+        {/* Hero Section */}
+        <section className="hero-glow max-w-6xl mx-auto px-6 pt-20 md:pt-32 pb-24 text-center relative z-10">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-full text-indigo-600 text-[10px] font-black uppercase tracking-[0.2em] mb-8 fade-up">
+            <Sparkles className="h-3.5 w-3.5" /> AI-powered personal journal
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight text-[#1F1F1F] leading-[1.1] mb-6">
+          <h1
+            className="text-5xl md:text-7xl font-black tracking-tight text-slate-900 leading-[1.1] mb-8 fade-up"
+            style={{ animationDelay: "0.1s" }}
+          >
             Tulis perasaanmu,
             <br />
-            <span className="text-indigo-600">biarkan AI</span> yang
+            <span className="gradient-text">biarkan AI</span> yang
             <br />
             bantu sisanya.
           </h1>
 
-          <p className="text-slate-400 text-base md:text-xl font-medium max-w-xl mx-auto mb-10 leading-relaxed px-4">
+          <p
+            className="text-slate-500 text-lg md:text-xl font-medium max-w-2xl mx-auto mb-12 fade-up"
+            style={{ animationDelay: "0.2s" }}
+          >
             Jurnal harian yang ngerti kamu — deteksi mood otomatis, rapikan
-            tulisan, dan simpan semua cerita harianmu.
+            tulisan secara cerdas, dan temukan insight dari setiap harimu.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 px-4">
+          <div
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 fade-up"
+            style={{ animationDelay: "0.3s" }}
+          >
             <button
-              type="button"
               onClick={() => router.push("/register")}
-              className="w-full sm:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 active:scale-95 transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-10 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-2xl shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-3"
             >
               Mulai Nulis Gratis <ArrowRight className="h-5 w-5" />
             </button>
-            <button
-              type="button"
-              onClick={() => router.push("/login")}
-              className="w-full sm:w-auto px-8 py-4 bg-slate-50 hover:bg-slate-100 text-slate-600 font-black rounded-2xl border border-slate-200 active:scale-95 transition-all"
-            >
-              Sudah punya akun
-            </button>
           </div>
-          <p className="text-slate-300 text-[10px] font-medium mt-6 uppercase tracking-wider">
-            gratis selamanya · privat & aman 🔒
-          </p>
         </section>
 
-        {/* ── MOOD MARQUEE ──────────────────────────────────── */}
+        {/* Seamless Marquee Section */}
         <section
-          className="py-8 bg-slate-50 border-y border-slate-100 overflow-hidden"
+          className="py-8 bg-slate-50/50 border-y border-slate-100 overflow-hidden"
           aria-hidden="true"
         >
           <div className="marquee-track">
             {moodItems.map((item, i) => (
               <div
                 key={i}
-                className={`flex items-center gap-2 px-4 py-2 mx-2 rounded-full border text-[10px] font-black uppercase tracking-widest flex-shrink-0 ${item.color}`}
+                className={`flex items-center gap-3 px-6 py-3 mx-4 rounded-full border text-xs font-black uppercase tracking-widest flex-shrink-0 ${item.color}`}
               >
-                <span>{item.emoji}</span> <span>Mood: {item.mood}</span>
+                <span>{item.emoji}</span>
+                <span>Mood: {item.mood}</span>
               </div>
             ))}
           </div>
         </section>
 
-        {/* ── FEATURES ──────────────────────────────────────── */}
-        <section className="max-w-5xl mx-auto px-6 py-20 relative z-10">
-          <div className="text-center mb-12">
-            <p className="text-indigo-500 font-black text-[11px] uppercase tracking-[0.3em] mb-3">
-              Fitur
-            </p>
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-[#1F1F1F]">
-              Semua yang kamu butuhkan📓
+        {/* Features Section */}
+        <section className="max-w-6xl mx-auto px-6 py-32">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl font-black text-slate-900 mb-4">
+              Semua yang kamu butuhkan 📓
             </h2>
+            <p className="text-slate-500 max-w-sm mx-auto">
+              Fitur cerdas untuk mendukung kesehatan mentalmu setiap hari.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {features.map((f, i) => (
               <div
                 key={i}
-                className={`p-6 rounded-[1.5rem] border ${f.color} transition-all hover:scale-[1.02] hover:shadow-md`}
+                className={`card-hover p-8 rounded-[2rem] border ${f.color}`}
               >
-                <div className="text-3xl mb-3">{f.emoji}</div>
-                <h3
-                  className={`text-sm font-black uppercase tracking-tight mb-1.5 ${f.textColor}`}
-                >
+                <div className="text-4xl mb-6">{f.emoji}</div>
+                <h3 className={`text-lg font-black mb-3 ${f.textColor}`}>
                   {f.title}
                 </h3>
-                <p className="text-slate-500 text-sm font-medium leading-relaxed">
+                <p className="text-slate-600 font-medium leading-relaxed">
                   {f.desc}
                 </p>
               </div>
@@ -394,17 +415,38 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── FOOTER ────────────────────────────────────────── */}
-        <footer className="border-t border-slate-100 py-10 relative z-10">
-          <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="h-6 w-6 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <Sparkles className="h-3 w-3 text-white fill-white/20" />
-              </div>
-              <span className="text-sm font-black text-[#1F1F1F]">Jourdy</span>
+        {/* CTA Section */}
+        <section className="max-w-6xl mx-auto px-6 pb-32">
+          <div className="bg-indigo-600 rounded-[3rem] p-12 md:p-24 text-center relative overflow-hidden shadow-2xl shadow-indigo-200">
+            <div className="relative z-10">
+              <h2 className="text-4xl md:text-5xl font-black text-white mb-6">
+                Mulai cerita harimu sekarang.
+              </h2>
+              <p className="text-indigo-100 text-lg mb-10 max-w-md mx-auto">
+                Bergabunglah dengan ribuan orang yang sudah mulai merawat
+                kesehatan mental mereka dengan Jourdy.
+              </p>
+              <button
+                onClick={() => router.push("/register")}
+                className="px-10 py-5 bg-white text-indigo-600 font-black rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all mx-auto flex items-center gap-2"
+              >
+                Buat Akun Gratis <ArrowRight className="h-5 w-5" />
+              </button>
             </div>
-            <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest text-center sm:text-right">
-              dibuat dengan 💙 untuk semua yang suka nulis
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="border-t border-slate-100 py-12">
+          <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <span className="font-black text-slate-900">Jourdy</span>
+            </div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              © 2026 Dibuat dengan 💙 oleh Fadhlan Faidh
             </p>
           </div>
         </footer>

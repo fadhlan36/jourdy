@@ -15,10 +15,12 @@ import {
   Loader2,
   Mail,
   Lock,
-  UserPlus,
+  Sparkles,
   CheckCircle2,
   ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
+import { BackgroundEmojis } from "@/components/dashboard/BackgroundEmojis";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -57,10 +59,8 @@ export default function RegisterPage() {
       return;
     }
 
-    // Jika registrasi berhasil, biasanya session otomatis dibuat,
-    // kita sign out agar user login manual lewat halaman login.
     await supabase.auth.signOut();
-    setMessage("Akun berhasil dibuat! Silahkan login.");
+    setMessage("Akun berhasil dibuat! Mengalihkan...");
     setIsSuccess(true);
     setLoading(false);
 
@@ -68,23 +68,27 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4 relative overflow-hidden">
-      <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-100 rounded-full blur-3xl opacity-60 animate-pulse" />
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-60" />
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#F9F9F9] p-4 relative overflow-hidden">
+      {/* Emoji Background - Same as Dashboard */}
+      <BackgroundEmojis />
 
-      <Card className="w-full max-w-[420px] shadow-2xl border-none bg-white/90 backdrop-blur-md relative z-10 rounded-[2.5rem]">
-        <CardHeader className="space-y-4 text-center pt-10 px-8">
+      {/* Background Blobs for extra depth */}
+      <div className="fixed top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-100/30 rounded-full blur-[120px] opacity-60 pointer-events-none" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-purple-100/30 rounded-full blur-[100px] opacity-50 pointer-events-none" />
+
+      <Card className="w-full max-w-[420px] shadow-2xl border border-slate-100 bg-white/80 backdrop-blur-xl relative z-10 rounded-[2.5rem] overflow-hidden">
+        <CardHeader className="space-y-4 text-center pt-12 px-8">
           <div className="flex justify-center">
-            <div className="bg-slate-900 p-4 rounded-2xl shadow-xl shadow-slate-200">
-              <UserPlus className="h-8 w-8 text-white" />
+            <div className="h-12 w-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
+              <Sparkles className="h-6 w-6 text-white" />
             </div>
           </div>
-          <div className="space-y-1">
-            <CardTitle className="text-3xl font-black tracking-tighter text-slate-900 uppercase">
-              Daftar Akun
+          <div className="space-y-2">
+            <CardTitle className="text-3xl font-black tracking-tight text-slate-900">
+              Mulai <span className="text-indigo-600">Jourdy</span>
             </CardTitle>
             <CardDescription className="text-slate-500 font-medium">
-              Simpan jurnalmu dengan aman di cloud.
+              Gratis selamanya, privat, dan aman. 🔒
             </CardDescription>
           </div>
         </CardHeader>
@@ -97,31 +101,41 @@ export default function RegisterPage() {
             }}
             className="space-y-4"
           >
-            <div className="relative group">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors z-10" />
-              <Input
-                type="email"
-                placeholder="Alamat Email Baru"
-                className="pl-12 h-13 bg-white border-slate-200 rounded-xl focus-visible:ring-2 focus-visible:ring-indigo-600 text-slate-900 placeholder:text-slate-400 font-semibold border-2"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                Email
+              </label>
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors z-10" />
+                <Input
+                  type="email"
+                  placeholder="name@example.com"
+                  className="pl-12 h-14 bg-white border-slate-200 rounded-2xl focus-visible:ring-indigo-600 text-slate-900 font-medium border-2 transition-all"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
             </div>
 
-            <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors z-10" />
-              <Input
-                type="password"
-                placeholder="Buat Kata Sandi"
-                className="pl-12 h-13 bg-white border-slate-200 rounded-xl focus-visible:ring-2 focus-visible:ring-indigo-600 text-slate-900 placeholder:text-slate-400 font-semibold border-2"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                Kata Sandi Baru
+              </label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors z-10" />
+                <Input
+                  type="password"
+                  placeholder="Minimal 6 karakter"
+                  className="pl-12 h-14 bg-white border-slate-200 rounded-2xl focus-visible:ring-indigo-600 text-slate-900 font-medium border-2 transition-all"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
             </div>
 
             {message && (
               <div
-                className={`flex items-center justify-center gap-2 text-[13px] py-3 px-4 rounded-xl font-bold border transition-all animate-in fade-in slide-in-from-top-2 ${isSuccess ? "bg-green-50 text-green-600 border-green-100" : "bg-red-50 text-red-600 border-red-100"}`}
+                className={`flex items-center justify-center gap-2 text-xs py-3 px-4 rounded-xl font-bold border transition-all animate-in fade-in slide-in-from-top-2 ${isSuccess ? "bg-green-50 text-green-600 border-green-100" : "bg-red-50 text-red-600 border-red-100"}`}
               >
                 {isSuccess && <CheckCircle2 className="h-4 w-4" />}
                 {message}
@@ -130,13 +144,15 @@ export default function RegisterPage() {
 
             <Button
               type="submit"
-              className="w-full h-13 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-95 shadow-xl text-md"
+              className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 transition-all active:scale-95 flex gap-2 text-base mt-2"
               disabled={loading || isSuccess}
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                "Buat Akun Sekarang"
+                <>
+                  Daftar Akun Gratis <ArrowRight className="h-5 w-5" />
+                </>
               )}
             </Button>
           </form>
@@ -147,7 +163,7 @@ export default function RegisterPage() {
               onClick={() => router.push("/login")}
               className="text-sm text-slate-500 font-bold hover:text-indigo-600 flex items-center justify-center gap-2 mx-auto transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" /> Kembali ke Login
+              <ArrowLeft className="h-4 w-4" /> Sudah punya akun? Masuk
             </button>
           </div>
         </CardContent>
