@@ -43,6 +43,7 @@ export default function DashboardPage() {
   const currentCategory = useRef(category);
   const currentMood = useRef(mood);
 
+  // Sync refs agar auto-save selalu mendapat nilai terbaru tanpa re-render berlebih
   useEffect(() => {
     currentCategory.current = category;
   }, [category]);
@@ -50,6 +51,7 @@ export default function DashboardPage() {
     currentMood.current = mood;
   }, [mood]);
 
+  // Responsive Sidebar handler
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) setIsSidebarOpen(true);
@@ -68,7 +70,7 @@ export default function DashboardPage() {
       const data = await res.json();
       if (data.insight) setWeeklyInsight(data.insight);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch Insight Error:", err);
     } finally {
       setIsLoadingInsight(false);
     }
@@ -81,6 +83,8 @@ export default function DashboardPage() {
   ) => {
     if (content.length < 15 || !id || isAnalyzingMood) return;
     const now = Date.now();
+
+    // Throttle deteksi mood agar tidak spam API (setiap 15 detik atau jika dipaksa)
     if (
       !force &&
       (now - lastMoodCheck.current < 15000 ||
@@ -91,6 +95,7 @@ export default function DashboardPage() {
     lastMoodCheck.current = now;
     lastContentAnalyzed.current = content;
     setIsAnalyzingMood(true);
+
     try {
       const res = await fetch("/api/ai/analyze-mood", {
         method: "POST",
@@ -98,46 +103,32 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       const detectedMood = data.mood || "Netral";
+
+      // Update local state, biarkan auto-save yang melakukan sinkronisasi ke DB
       setMood(detectedMood);
       currentMood.current = detectedMood;
 
-      await fetch(`/api/journal/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content,
-          category: currentCategory.current,
-          mood: detectedMood,
-        }),
-      });
-
       setJournals((prev) =>
-        prev.map((j) =>
-          j.id === id
-            ? {
-                ...j,
-                mood: detectedMood,
-                content,
-                category: currentCategory.current,
-              }
-            : j,
-        ),
+        prev.map((j) => (j.id === id ? { ...j, mood: detectedMood } : j)),
       );
       setCalendarKey((p) => p + 1);
     } catch (err) {
-      console.error(err);
+      console.error("Mood Analysis Error:", err);
     } finally {
       setIsAnalyzingMood(false);
     }
   };
 
+  // Logic Auto-Save Utama
   useEffect(() => {
     if ((!text.trim() && !journalId) || isSaving.current) return;
+
     const timeout = setTimeout(async () => {
       setStatus("Saving...");
       isSaving.current = true;
       try {
         if (!journalId) {
+          // POST: Create new journal
           const res = await fetch("/api/journal", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -151,50 +142,59 @@ export default function DashboardPage() {
           if (data?.id) {
             setJournalId(data.id);
             setJournals((prev) => [data, ...prev]);
-            fetchWeeklyInsight();
             detectMood(text, data.id, true);
+            fetchWeeklyInsight();
           }
         } else {
+          // PUT: Update existing journal
+          const payload = {
+            content: text,
+            category: currentCategory.current,
+            mood: currentMood.current,
+          };
+
           await fetch(`/api/journal/${journalId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              content: text,
-              category: currentCategory.current,
-              mood: currentMood.current,
-            }),
+            body: JSON.stringify(payload),
           });
+
           setJournals((prev) =>
-            prev.map((j) =>
-              j.id === journalId
-                ? { ...j, content: text, category: currentCategory.current }
-                : j,
-            ),
+            prev.map((j) => (j.id === journalId ? { ...j, ...payload } : j)),
           );
-          if (text.trim()) detectMood(text, journalId);
+
+          if (text.trim().length > 15) detectMood(text, journalId);
         }
         setStatus("Saved");
         setCalendarKey((p) => p + 1);
-      } catch {
+      } catch (err) {
+        console.error("Save Error:", err);
         setStatus("Error");
       } finally {
         isSaving.current = false;
       }
-    }, 1000);
+    }, 3000);
+
     return () => clearTimeout(timeout);
   }, [text, category, journalId]);
 
+  // Auth & Initial Data Fetch
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getUser();
-      if (!data.user) router.push("/login");
-      else {
+      if (!data.user) {
+        router.push("/login");
+      } else {
         setUserEmail(data.user.email ?? null);
-        const res = await fetch("/api/journal");
-        const d = await res.json();
-        const arr = Array.isArray(d) ? d : [];
-        setJournals(arr);
-        if (arr.length > 0) fetchWeeklyInsight();
+        try {
+          const res = await fetch("/api/journal");
+          const d = await res.json();
+          const arr = Array.isArray(d) ? d : [];
+          setJournals(arr);
+          if (arr.length > 0) fetchWeeklyInsight();
+        } catch (e) {
+          setJournals([]);
+        }
       }
       setCheckingAuth(false);
     };
@@ -225,12 +225,15 @@ export default function DashboardPage() {
   return (
     <div className="flex h-screen bg-[#F9F9F9] text-[#212121] font-sans overflow-hidden relative">
       <BackgroundEmojis />
+
+      {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[45] lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
+
       <Sidebar
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
@@ -263,6 +266,7 @@ export default function DashboardPage() {
           detectMood(j.content, j.id, true);
         }}
       />
+
       <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         <Editor
           text={text}
@@ -297,6 +301,7 @@ export default function DashboardPage() {
             }
           }}
         />
+
         <InsightsPanel
           calendarKey={calendarKey}
           weeklyInsight={weeklyInsight}
@@ -304,6 +309,7 @@ export default function DashboardPage() {
           onRefreshInsight={fetchWeeklyInsight}
         />
       </div>
+
       {showComparison && (
         <ComparisonModal
           originalText={text}
