@@ -25,52 +25,56 @@ const MOOD_LEGEND = [
   { label: "Netral", dot: "bg-slate-300" },
 ];
 
-export function MoodCalendar() {
+interface MoodCalendarProps {
+  calendarKey?: number;
+}
+
+export function MoodCalendar({ calendarKey = 0 }: MoodCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [journals, setJournals] = useState<any[]>([]);
 
+  const fetchJournals = async () => {
+    try {
+      const res = await fetch("/api/journal", {
+        headers: { "Cache-Control": "no-cache" },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data)) setJournals(data);
+    } catch (err) {
+      console.error("MoodCalendar: gagal fetch jurnal", err);
+    }
+  };
+
+  // Re-fetch data setiap kali calendarKey dari parent berubah
   useEffect(() => {
-    const fetchJournals = async () => {
-      try {
-        const res = await fetch("/api/journal", {
-          headers: { "Cache-Control": "no-cache" },
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (Array.isArray(data)) setJournals(data);
-      } catch (err) {
-        console.error("MoodCalendar: gagal fetch jurnal", err);
-      }
-    };
-
     fetchJournals();
-
-    const handleUpdate = () => fetchJournals();
-    window.addEventListener("journalUpdated", handleUpdate);
-    return () => window.removeEventListener("journalUpdated", handleUpdate);
-  }, []);
+  }, [calendarKey]);
 
   const getMoodsForDate = (date: Date) => {
     if (!journals.length) return [];
 
-    return journals
-      .filter((j: any) => {
-        const raw = j.created_at ?? j.createdAt;
-        if (!raw) return false;
-        return isSameDay(new Date(raw), date);
-      })
-      .sort(
-        (a: any, b: any) =>
-          new Date(a.created_at ?? a.createdAt).getTime() -
-          new Date(b.created_at ?? b.createdAt).getTime(),
-      )
-      .map((j: any) => ({ mood: j.mood, config: getMoodConfig(j.mood) }))
-      .filter((item) => item.config)
-      .filter(
-        (item, index, arr) =>
-          arr.findIndex((x) => x.mood === item.mood) === index,
-      )
-      .map((item) => item.config);
+    return (
+      journals
+        .filter((j: any) => {
+          const raw = j.created_at ?? j.createdAt;
+          if (!raw) return false;
+          return isSameDay(new Date(raw), date);
+        })
+        .sort(
+          (a: any, b: any) =>
+            new Date(a.created_at ?? a.createdAt).getTime() -
+            new Date(b.created_at ?? b.createdAt).getTime(),
+        )
+        .map((j: any) => ({ mood: j.mood, config: getMoodConfig(j.mood) }))
+        .filter((item) => item.config)
+        // Hilangkan duplikat mood di hari yang sama agar dot tidak menumpuk
+        .filter(
+          (item, index, arr) =>
+            arr.findIndex((x) => x.mood === item.mood) === index,
+        )
+        .map((item) => item.config)
+    );
   };
 
   const renderHeader = () => (
@@ -141,6 +145,7 @@ export function MoodCalendar() {
             key={day.toString()}
             className="relative aspect-square flex flex-col items-center justify-center py-1"
           >
+            {/* Highlight Hari Ini */}
             {activeToday && isCurrentMonth && (
               <div className="absolute inset-[1px] rounded-lg bg-indigo-50 border border-indigo-100" />
             )}
@@ -157,9 +162,10 @@ export function MoodCalendar() {
               {formattedDate}
             </span>
 
+            {/* Titik-titik Mood */}
             {moods.length > 0 && isCurrentMonth && (
               <div className="relative z-10 flex gap-0.5 mt-1 justify-center flex-wrap px-0.5">
-                {moods.slice(0, 4).map((m, idx) => (
+                {moods.slice(0, 4).map((m: any, idx: number) => (
                   <div
                     key={idx}
                     className={`h-1.5 w-1.5 rounded-full shadow-sm ${m.dot}`}
@@ -207,7 +213,7 @@ export function MoodCalendar() {
   );
 
   return (
-    <div className="w-full select-none max-w-[280px] mx-auto">
+    <div className="w-full select-none max-w-[280px] mx-auto bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
       {renderHeader()}
       {renderDays()}
       {renderCells()}

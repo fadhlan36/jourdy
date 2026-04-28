@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -37,21 +38,17 @@ export default function DashboardPage() {
   const [weeklyInsight, setWeeklyInsight] = useState<any>(null);
 
   const router = useRouter();
-  const isSaving = useRef(false);
-  const lastMoodCheck = useRef(0);
-  const lastContentAnalyzed = useRef("");
-  const currentCategory = useRef(category);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentMood = useRef(mood);
+  const journalIdRef = useRef<string | null>(null);
 
-  // Sync refs agar auto-save selalu mendapat nilai terbaru tanpa re-render berlebih
-  useEffect(() => {
-    currentCategory.current = category;
-  }, [category]);
   useEffect(() => {
     currentMood.current = mood;
   }, [mood]);
+  useEffect(() => {
+    journalIdRef.current = journalId;
+  }, [journalId]);
 
-  // Responsive Sidebar handler
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) setIsSidebarOpen(true);
@@ -63,122 +60,127 @@ export default function DashboardPage() {
   }, []);
 
   const fetchWeeklyInsight = async () => {
-    if (isLoadingInsight) return;
     setIsLoadingInsight(true);
     try {
       const res = await fetch("/api/ai/weekly-insight", { method: "POST" });
       const data = await res.json();
       if (data.insight) setWeeklyInsight(data.insight);
-    } catch (err) {
-      console.error("Fetch Insight Error:", err);
     } finally {
       setIsLoadingInsight(false);
     }
   };
 
-  const detectMood = async (
-    content: string,
-    id: string | null,
-    force = false,
-  ) => {
-    if (content.length < 15 || !id || isAnalyzingMood) return;
-    const now = Date.now();
-
-    // Throttle deteksi mood agar tidak spam API (setiap 15 detik atau jika dipaksa)
-    if (
-      !force &&
-      (now - lastMoodCheck.current < 15000 ||
-        content === lastContentAnalyzed.current)
-    )
-      return;
-
-    lastMoodCheck.current = now;
-    lastContentAnalyzed.current = content;
+  const handleMoodDetection = async (content: string, id: string) => {
+    if (content.length < 15 || isAnalyzingMood) return;
     setIsAnalyzingMood(true);
-
     try {
-      const res = await fetch("/api/ai/analyze-mood", {
+      const aiRes = await fetch("/api/ai/analyze-mood", {
         method: "POST",
         body: JSON.stringify({ content }),
       });
-      const data = await res.json();
-      const detectedMood = data.mood || "Netral";
+      const aiData = await aiRes.json();
+      const detectedMood = aiData.mood || "Netral";
 
-      // Update local state, biarkan auto-save yang melakukan sinkronisasi ke DB
+      await fetch(`/api/journal/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          category,
+          mood: detectedMood,
+        }),
+      });
+
       setMood(detectedMood);
       currentMood.current = detectedMood;
-
       setJournals((prev) =>
-        prev.map((j) => (j.id === id ? { ...j, mood: detectedMood } : j)),
+        prev.map((j) =>
+          j.id === id ? { ...j, mood: detectedMood, content } : j,
+        ),
       );
       setCalendarKey((p) => p + 1);
     } catch (err) {
-      console.error("Mood Analysis Error:", err);
+      console.error("Mood Update Error:", err);
     } finally {
       setIsAnalyzingMood(false);
     }
   };
 
-  // Logic Auto-Save Utama
   useEffect(() => {
-    if ((!text.trim() && !journalId) || isSaving.current) return;
+    if (!text.trim()) return;
 
-    const timeout = setTimeout(async () => {
-      setStatus("Saving...");
-      isSaving.current = true;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    setStatus("Saving...");
+
+    // FIX: capture nilai text dan category di sini — sebelum setTimeout
+    // Ini yang benar karena effect jalan saat nilai sudah terupdate
+    const contentToSave = text;
+    const categoryToSave = category;
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      let activeId = journalIdRef.current;
+
       try {
-        if (!journalId) {
-          // POST: Create new journal
+        if (!activeId) {
           const res = await fetch("/api/journal", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              content: text,
-              category: currentCategory.current,
+              content: contentToSave,
+              category: categoryToSave,
               mood: "Netral",
             }),
           });
+
+          if (!res.ok) throw new Error(`POST failed: HTTP ${res.status}`);
+
           const data = await res.json();
           if (data?.id) {
+            activeId = data.id;
+            journalIdRef.current = data.id;
             setJournalId(data.id);
             setJournals((prev) => [data, ...prev]);
-            detectMood(text, data.id, true);
             fetchWeeklyInsight();
           }
         } else {
-          // PUT: Update existing journal
-          const payload = {
-            content: text,
-            category: currentCategory.current,
-            mood: currentMood.current,
-          };
-
-          await fetch(`/api/journal/${journalId}`, {
+          const res = await fetch(`/api/journal/${activeId}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+              content: contentToSave,
+              category: categoryToSave,
+              mood: currentMood.current,
+            }),
           });
 
-          setJournals((prev) =>
-            prev.map((j) => (j.id === journalId ? { ...j, ...payload } : j)),
-          );
+          if (!res.ok) throw new Error(`PUT failed: HTTP ${res.status}`);
 
-          if (text.trim().length > 15) detectMood(text, journalId);
+          setJournals((prev) =>
+            prev.map((j) =>
+              j.id === activeId
+                ? { ...j, content: contentToSave, category: categoryToSave }
+                : j,
+            ),
+          );
         }
+
         setStatus("Saved");
         setCalendarKey((p) => p + 1);
+
+        if (activeId && contentToSave.length > 15) {
+          await handleMoodDetection(contentToSave, activeId);
+        }
       } catch (err) {
         console.error("Save Error:", err);
         setStatus("Error");
-      } finally {
-        isSaving.current = false;
       }
-    }, 3000);
+    }, 2000);
 
-    return () => clearTimeout(timeout);
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
   }, [text, category, journalId]);
 
-  // Auth & Initial Data Fetch
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getUser();
@@ -186,15 +188,10 @@ export default function DashboardPage() {
         router.push("/login");
       } else {
         setUserEmail(data.user.email ?? null);
-        try {
-          const res = await fetch("/api/journal");
-          const d = await res.json();
-          const arr = Array.isArray(d) ? d : [];
-          setJournals(arr);
-          if (arr.length > 0) fetchWeeklyInsight();
-        } catch (e) {
-          setJournals([]);
-        }
+        const res = await fetch("/api/journal");
+        const d = await res.json();
+        setJournals(Array.isArray(d) ? d : []);
+        if (Array.isArray(d) && d.length > 0) fetchWeeklyInsight();
       }
       setCheckingAuth(false);
     };
@@ -223,17 +220,8 @@ export default function DashboardPage() {
     );
 
   return (
-    <div className="flex h-screen bg-[#F9F9F9] text-[#212121] font-sans overflow-hidden relative">
+    <div className="flex h-screen bg-[#F9F9F9] text-[#212121] overflow-hidden relative font-sans">
       <BackgroundEmojis />
-
-      {/* Mobile Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[45] lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
       <Sidebar
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
@@ -250,23 +238,33 @@ export default function DashboardPage() {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onNewEntry={() => {
+          if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
           setText("");
           setJournalId(null);
+          journalIdRef.current = null;
           setCategory("Personal");
           setMood("Netral");
+          currentMood.current = "Netral";
           setStatus("Ready");
-          if (window.innerWidth < 1024) setIsSidebarOpen(false);
+          if (typeof window !== "undefined" && window.innerWidth < 1024) {
+            setIsSidebarOpen(false);
+          }
         }}
         onSelectJournal={(j: any) => {
+          if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
           setJournalId(j.id);
+          journalIdRef.current = j.id;
           setText(j.content);
           setCategory(j.category || "Personal");
           setMood(j.mood || "Netral");
-          if (window.innerWidth < 1024) setIsSidebarOpen(false);
-          detectMood(j.content, j.id, true);
+          currentMood.current = j.mood || "Netral";
+          setStatus("Ready");
+          if (typeof window !== "undefined" && window.innerWidth < 1024) {
+            setIsSidebarOpen(false);
+          }
+          handleMoodDetection(j.content, j.id);
         }}
       />
-
       <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         <Editor
           text={text}
@@ -301,7 +299,6 @@ export default function DashboardPage() {
             }
           }}
         />
-
         <InsightsPanel
           calendarKey={calendarKey}
           weeklyInsight={weeklyInsight}
@@ -316,9 +313,10 @@ export default function DashboardPage() {
           refinedText={refinedText}
           onClose={() => setShowComparison(false)}
           onApply={() => {
-            setText(refinedText);
+            const final = refinedText;
+            setText(final);
             setShowComparison(false);
-            if (journalId) detectMood(refinedText, journalId, true);
+            if (journalId) handleMoodDetection(final, journalId);
           }}
         />
       )}

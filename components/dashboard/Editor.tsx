@@ -8,7 +8,6 @@ import {
   Sparkles,
   ChevronDown,
 } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
 import { getMoodConfig, categoryColor, CATEGORIES } from "./config";
 
 export function Editor({
@@ -37,6 +36,7 @@ export function Editor({
         <div className="flex items-center gap-2">
           {!isSidebarOpen && (
             <button
+              type="button"
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 hover:bg-slate-100 rounded-lg lg:hidden"
             >
@@ -48,7 +48,7 @@ export function Editor({
               <Loader2 size={13} className="animate-spin" />
             ) : (
               <Cloud size={13} />
-            )}{" "}
+            )}
             <span>{status}</span>
           </div>
         </div>
@@ -58,7 +58,6 @@ export function Editor({
       </header>
 
       <div className="flex-1 flex flex-col items-center p-4 md:p-10">
-        {/* Diperlebar ke max-w-5xl */}
         <div className="w-full max-w-5xl mb-8">
           <div className="flex items-center gap-2 mb-4 text-slate-400 font-black text-[12px] uppercase tracking-widest">
             <div className="h-px w-8 bg-slate-300" />
@@ -72,6 +71,7 @@ export function Editor({
 
         <div className="w-full max-w-5xl relative bg-white border border-slate-100 rounded-[2.5rem] shadow-xl flex flex-col min-h-[500px]">
           <div className="flex flex-wrap gap-3 p-8 pb-0">
+            {/* Mood pill */}
             <div
               className={`flex items-center gap-2 px-5 py-2.5 rounded-full border text-[12px] font-black uppercase tracking-widest transition-all shadow-sm ${mc.pill}`}
             >
@@ -79,10 +79,11 @@ export function Editor({
                 <Loader2 size={16} className="animate-spin" />
               ) : (
                 <Smile size={18} />
-              )}{" "}
+              )}
               {mood}
             </div>
 
+            {/* Category dropdown */}
             <div className="relative">
               <button
                 type="button"
@@ -91,8 +92,9 @@ export function Editor({
               >
                 <div
                   className={`h-2.5 w-2.5 rounded-full ${categoryColor[category]}`}
-                />{" "}
-                {category} <ChevronDown size={14} />
+                />
+                {category}
+                <ChevronDown size={14} />
               </button>
               {isCategoryOpen && (
                 <>
@@ -100,15 +102,20 @@ export function Editor({
                     className="fixed inset-0 z-40"
                     onClick={() => setIsCategoryOpen(false)}
                   />
-                  <div className="absolute top-14 left-0 w-56 bg-white border border-slate-100 shadow-2xl rounded-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="absolute top-14 left-0 w-56 bg-white border border-slate-100 shadow-2xl rounded-2xl p-2 z-50">
                     {CATEGORIES.map((cat) => (
                       <button
                         key={cat}
+                        type="button"
                         onClick={() => {
                           setCategory(cat);
                           setIsCategoryOpen(false);
                         }}
-                        className={`w-full text-left px-5 py-3.5 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all ${category === cat ? "bg-indigo-50 text-indigo-600" : "hover:bg-slate-50 text-slate-500"}`}
+                        className={`w-full text-left px-5 py-3.5 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all ${
+                          category === cat
+                            ? "bg-indigo-50 text-indigo-600"
+                            : "hover:bg-slate-50 text-slate-500"
+                        }`}
                       >
                         {cat}
                       </button>
@@ -119,28 +126,35 @@ export function Editor({
             </div>
           </div>
 
-          <Textarea
+          {/* FIX: ganti <Textarea> shadcn dengan <textarea> native
+              Shadcn Textarea kemungkinan tidak forward onChange dengan benar
+              dalam konteks tertentu */}
+          <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Tulis apa saja..."
-            className="w-full bg-transparent border-none text-xl md:text-3xl p-8 pb-20 resize-none flex-1 focus-visible:ring-0 font-medium"
+            placeholder="Tulis apa saja yang ada di pikiranmu..."
+            className="w-full bg-transparent border-none text-xl md:text-3xl p-8 pb-20 resize-none flex-1 outline-none font-medium text-slate-800 placeholder:text-slate-200 leading-relaxed"
           />
 
           <div className="p-8 border-t border-slate-50 flex justify-between items-center bg-slate-50/30 rounded-b-[2.5rem]">
             <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
-              <span>{wordCount} Words</span>
+              {wordCount} Words · {text.length} Chars
             </div>
-
             <button
+              type="button"
               onClick={onAIPreview}
               disabled={!text.trim() || isRefining}
-              className={`px-7 py-3.5 rounded-2xl font-black text-[13px] uppercase tracking-widest flex items-center gap-3 transition-all ${text.trim() ? "bg-indigo-600 text-white hover:scale-105 active:scale-95 shadow-lg shadow-indigo-200" : "bg-slate-100 text-slate-300"}`}
+              className={`px-7 py-3.5 rounded-2xl font-black text-[13px] uppercase tracking-widest flex items-center gap-3 transition-all ${
+                text.trim()
+                  ? "bg-indigo-600 text-white hover:scale-105 active:scale-95 shadow-lg shadow-indigo-200"
+                  : "bg-slate-100 text-slate-300 cursor-not-allowed"
+              }`}
             >
               {isRefining ? (
                 <Loader2 size={18} className="animate-spin" />
               ) : (
                 <Sparkles size={18} />
-              )}{" "}
+              )}
               AI Tidy Up
             </button>
           </div>
