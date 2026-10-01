@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   format,
   addMonths,
@@ -32,15 +32,28 @@ interface MoodCalendarProps {
 export function MoodCalendar({ calendarKey = 0 }: MoodCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [journals, setJournals] = useState<any[]>([]);
+  const requestIdRef = useRef(0);
 
   const fetchJournals = async () => {
+    const requestId = ++requestIdRef.current;
     try {
-      const res = await fetch("/api/journal", {
-        headers: { "Cache-Control": "no-cache" },
-      });
+      const res = await fetch("/api/journal", { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
-      if (Array.isArray(data)) setJournals(data);
+
+      // Abaikan respons lama yang tiba setelah request yang lebih baru
+      if (requestId !== requestIdRef.current) return;
+
+      if (Array.isArray(data)) {
+        setJournals(data);
+        // Log sementara untuk pengecekan, hapus kalau sudah beres
+        console.log(
+          "Mood hari ini:",
+          data
+            .filter((j: any) => isSameDay(new Date(j.created_at), new Date()))
+            .map((j: any) => j.mood),
+        );
+      }
     } catch (err) {
       console.error("MoodCalendar: gagal fetch jurnal", err);
     }
@@ -49,32 +62,25 @@ export function MoodCalendar({ calendarKey = 0 }: MoodCalendarProps) {
   // Re-fetch data setiap kali calendarKey dari parent berubah
   useEffect(() => {
     fetchJournals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calendarKey]);
 
+  // Semua mood unik di satu tanggal, berurutan dari yang paling awal ditulis
   const getMoodsForDate = (date: Date) => {
-    if (!journals.length) return [];
+    const configs = journals
+      .filter((j: any) => {
+        const raw = j.created_at ?? j.createdAt;
+        return raw && isSameDay(new Date(raw), date);
+      })
+      .sort(
+        (a: any, b: any) =>
+          new Date(a.created_at ?? a.createdAt).getTime() -
+          new Date(b.created_at ?? b.createdAt).getTime(),
+      )
+      .map((j: any) => getMoodConfig(j.mood));
 
-    return (
-      journals
-        .filter((j: any) => {
-          const raw = j.created_at ?? j.createdAt;
-          if (!raw) return false;
-          return isSameDay(new Date(raw), date);
-        })
-        .sort(
-          (a: any, b: any) =>
-            new Date(a.created_at ?? a.createdAt).getTime() -
-            new Date(b.created_at ?? b.createdAt).getTime(),
-        )
-        .map((j: any) => ({ mood: j.mood, config: getMoodConfig(j.mood) }))
-        .filter((item) => item.config)
-        // Hilangkan duplikat mood di hari yang sama agar dot tidak menumpuk
-        .filter(
-          (item, index, arr) =>
-            arr.findIndex((x) => x.mood === item.mood) === index,
-        )
-        .map((item) => item.config)
-    );
+    // Config tiap mood adalah objek yang sama, jadi Set membuang duplikat
+    return Array.from(new Set(configs));
   };
 
   const renderHeader = () => (
@@ -162,12 +168,12 @@ export function MoodCalendar({ calendarKey = 0 }: MoodCalendarProps) {
               {formattedDate}
             </span>
 
-            {/* Titik-titik Mood */}
+            {/* Titik-titik Mood: satu dot per jenis mood di hari itu */}
             {moods.length > 0 && isCurrentMonth && (
               <div className="relative z-10 flex gap-0.5 mt-1 justify-center flex-wrap px-0.5">
-                {moods.slice(0, 4).map((m: any, idx: number) => (
+                {moods.map((m: any) => (
                   <div
-                    key={idx}
+                    key={m.dot}
                     className={`h-1.5 w-1.5 rounded-full shadow-sm ${m.dot}`}
                   />
                 ))}

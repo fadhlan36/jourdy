@@ -49,7 +49,7 @@ export async function POST() {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
+                model: process.env.AI_MODEL_FAST ?? "openai/gpt-oss-20b",
                 messages: [
                     { role: "system", content: "Anda adalah asisten psikologi. WAJIB menjawab HANYA dalam format JSON valid." },
                     { role: "user", content: `Analisis: ${journalSummary}. Format: {"emotionalState": "...", "patterns": "...", "recommendation": "..."}` }

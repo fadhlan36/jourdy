@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 
+const ALLOWED = ["Senang", "Sedih", "Marah", "Cemas", "Netral"];
+
 export async function POST(req: Request) {
     try {
         const { content } = await req.json();
@@ -9,34 +11,37 @@ export async function POST(req: Request) {
         if (!apiKey) {
             return NextResponse.json({ error: "API Key missing" }, { status: 500 });
         }
+        if (!content || typeof content !== "string") {
+            return NextResponse.json({ mood: "Netral" });
+        }
 
         const groq = new Groq({ apiKey });
         const completion = await groq.chat.completions.create({
-            model: "llama-3.1-8b-instant",
-            max_tokens: 15,
+            model: process.env.AI_MODEL_FAST ?? "openai/gpt-oss-20b",
+            // gpt-oss adalah model reasoning: token berpikir ikut terhitung,
+            // jadi batasnya harus longgar agar jawaban tidak kosong
+            max_tokens: 500,
             temperature: 0,
+            reasoning_effort: "low",
             messages: [
                 {
                     role: "system",
-                    content: "Jawab HANYA satu kata: Senang, Sedih, Marah, Cemas, atau Netral. Tanpa tanda baca."
+                    content:
+                        "Klasifikasikan emosi dominan dari teks jurnal. Jawab HANYA satu kata dari daftar ini: Senang, Sedih, Marah, Cemas, Netral. Tanpa tanda baca, tanpa penjelasan.",
                 },
-                {
-                    role: "user",
-                    content: content
-                }
-            ]
+                { role: "user", content },
+            ],
         });
 
-        const rawMood = completion.choices[0].message.content?.trim() || "Netral";
-        // Ambil kata pertama dan bersihkan karakter non-huruf
-        const mood = rawMood.split(/\s+/)[0].replace(/[^a-zA-Z]/g, "");
+        const rawMood = completion.choices[0]?.message?.content?.trim() ?? "";
+        console.log("Mood raw:", JSON.stringify(rawMood)); // hapus kalau sudah stabil
 
-        const allowed = ["Senang", "Sedih", "Marah", "Cemas", "Netral"];
-        const finalMood = allowed.includes(mood) ? mood : "Netral";
+        const finalMood =
+            ALLOWED.find((m) => rawMood.toLowerCase().includes(m.toLowerCase())) ?? "Netral";
 
         return NextResponse.json({ mood: finalMood });
     } catch (error: any) {
-        console.error("Mood Analysis Error:", error.message);
+        console.error("Mood Analysis Error:", error?.message ?? error);
         return NextResponse.json({ mood: "Netral" });
     }
 }

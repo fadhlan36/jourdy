@@ -11,15 +11,23 @@ export async function POST(req: Request) {
 
         const groq = new Groq({ apiKey });
         const completion = await groq.chat.completions.create({
-            model: "llama-3.1-8b-instant",
+            model: process.env.AI_MODEL_FAST ?? "openai/gpt-oss-20b",
             max_tokens: 1024,
-            messages: [{
-                role: "user",
-                content: `Kamu adalah asisten jurnal. Rapikan tulisan ini agar lebih mengalir dan reflektif dalam Bahasa Indonesia tanpa mengubah maknanya. Langsung berikan hasil revisinya saja tanpa komentar/tanda kutip: "${content}"`
-            }]
+            // Mengatur temperature ke 0 agar hasilnya kaku/konsisten mengikuti instruksi
+            temperature: 0,
+            messages: [
+                {
+                    role: "system",
+                    content: "Kamu adalah asisten editor teks. Tugasmu HANYA memperbaiki typo (salah ketik) dan merapikan tanda baca atau spasi. JANGAN mengubah pilihan kata, jangan menambah kalimat, dan jangan mengubah struktur kalimat. Berikan hasilnya langsung tanpa komentar apa pun."
+                },
+                {
+                    role: "user",
+                    content: content
+                }
+            ]
         });
 
-        const refinedText = completion.choices[0].message.content ?? content;
+        const refinedText = completion.choices[0].message.content?.trim() ?? content;
         return NextResponse.json({ refinedText });
     } catch (error: any) {
         console.error("Tidy-up Error:", error.message);
